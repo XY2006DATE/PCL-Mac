@@ -5,7 +5,8 @@ cd "$project_dir"
 if [[ "${1:-}" == "--universal" ]]; then
   xcodebuild -quiet -project PCLMac.xcodeproj -scheme PCLMac -configuration Release \
     -destination 'generic/platform=macOS' -derivedDataPath .build/Xcode.noindex \
-    ARCHS='arm64 x86_64' ONLY_ACTIVE_ARCH=NO CODE_SIGNING_ALLOWED=NO build
+    ARCHS='arm64 x86_64' ONLY_ACTIVE_ARCH=NO CODE_SIGNING_ALLOWED=NO \
+    OTHER_SWIFT_FLAGS='$(inherited) -file-prefix-map "$(SRCROOT)=/PCL-Mac" -debug-prefix-map "$(SRCROOT)=/PCL-Mac" -file-compilation-dir /PCL-Mac' build
   binary_dir="$project_dir/.build/Xcode.noindex/Build/Products/Release/PCL Mac版.app/Contents/MacOS"
   binary_name="PCL-SwiftUI"
 elif [[ -z "${1:-}" ]]; then

@@ -4,6 +4,10 @@
 
 来源提交、资源署名见 [NOTICE](NOTICE)，原项目许可与使用指南保留在 [LICENCE](LICENCE)。第三方字体、图片及标志的权利和分发条件需分别核对。
 
+## 下载安装
+
+在 [Releases](https://github.com/XY2006DATE/PCL-Mac/releases/latest) 下载最新版通用 DMG，将“PCL Mac版.app”拖入“应用程序”；也提供 ZIP 和 SHA-256 校验文件。安装包无需 Xcode，游戏仍需要合适的 Java。签名与公证状态以对应 Release 说明为准。
+
 ## 构建
 
 需要 macOS 14 或更新版本，以及带有 Swift 5.9 或更新工具链的完整 Xcode。游戏运行还需要适合 Minecraft 版本及 CPU 架构的 Java；启动器目前不会自动安装 Java。
@@ -18,6 +22,8 @@ open ".build/dist.noindex/PCL Mac版.app"
 通用应用包含 arm64 和 x86_64。只构建当前机器架构时运行 `zsh scripts/build-app.sh`。脚本使用本地临时签名，未配置 Developer ID 签名或 Apple 公证，产物保存在 `.build/` 中。
 
 也可用 Xcode 打开根目录的 `PCLMac.xcodeproj`，选择 `PCLMac` scheme。`project.yml` 为工程配置源；安装 XcodeGen 后运行 `xcodegen generate` 可重新生成工程。
+
+运行 `zsh scripts/package-release.sh` 可生成 DMG、ZIP 和校验文件，输出到 `.build/release.noindex/`。发布签名可通过 `PCL_RELEASE_SIGN_IDENTITY` 指定本机 Developer ID 证书；公证使用已存入钥匙串的 `PCL_NOTARY_PROFILE`。脚本和仓库不保存签名私钥或公证凭据。
 
 ## 使用与功能
 

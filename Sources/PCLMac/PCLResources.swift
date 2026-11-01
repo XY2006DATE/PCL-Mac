@@ -7,12 +7,16 @@ enum PCLResources {
     static func url(_ name: String, extension ext: String, subdirectory: String? = nil) -> URL? {
         if let bundled = Bundle.main.url(forResource: name, withExtension: ext, subdirectory: subdirectory) { return bundled }
         if let flattened = Bundle.main.url(forResource: name, withExtension: ext) { return flattened }
+        #if SWIFT_PACKAGE
         // SwiftPM's executable is also runnable directly from this source checkout.
         let resources = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
             .deletingLastPathComponent().appendingPathComponent("Resources")
         let directory = subdirectory.map { resources.appendingPathComponent($0) } ?? resources
         let candidate = directory.appendingPathComponent(name).appendingPathExtension(ext)
         return FileManager.default.fileExists(atPath: candidate.path) ? candidate : nil
+        #else
+        return nil
+        #endif
     }
 
     static func registerFont() {

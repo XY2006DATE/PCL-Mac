@@ -39,3 +39,11 @@ EasyTier runtime (downloaded separately on first multiplayer use)
 - Source for the matching release: https://github.com/EasyTier/EasyTier/tree/v2.6.4
 - Official macOS binaries are downloaded unchanged, verified with a pinned SHA-256, and run as separate processes. They are not included in this repository or the app bundle.
 - The PCLLinkSupervisor helper is source code in Support/Multiplayer/PCLLinkSupervisor.c.
+
+Automatic multiplayer protocol references
+- Scaffolding lobby identifiers, framing and profiles: PCL CE public source,
+  https://github.com/PCL-Community/PCL-CE/tree/67f540d0e32404d3b18d7d71db955dc8e0785f6b/PCL.Core/Link/Scaffolding
+- The Swift implementation is independent; no Windows CE binaries are bundled.
+- Public discovery catalog: EasyTier Uptime and Astral's published server data,
+  https://github.com/ldoubil/astral.github.io/blob/main/src/data/server.json
+- These community services are operated independently of this project.

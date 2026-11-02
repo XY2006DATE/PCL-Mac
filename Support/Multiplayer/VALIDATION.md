@@ -27,3 +27,29 @@ fixture results must not be described as a completed Mac/Windows gameplay test.
 
 Reproduction commands are in the repository README and the test file headers.
 No test uses or modifies Minecraft saves, mods, accounts or a user's instances.
+
+## Automatic discovery and Scaffolding follow-up
+
+- Full regression: 316 tests, 302 passed, 14 opt-in tests skipped, zero failures.
+- Real EasyTier tests: automatic host/guest without any shared server over local
+  IPv4 interfaces; forced IPv6 loopback; TCP and UDP payload verification.
+- Real Scaffolding room: an independent shared relay, AES-GCM host/guest identity,
+  hostname-based control discovery, dynamic loopback control/game forwarding,
+  binary port exchange, member registration/listing, TCP/UDP game payloads.
+- The wire parser was compared to CE's big-endian framing and a fixed little-
+  endian base-34 lobby code vector. An independent Python reference client kept
+  one control socket open across 16 seconds of fragmented heartbeat requests.
+- Catalog failure fallback, alternate catalog format, address validation,
+  self-contained direct links, credential redaction and cancellation passed.
+- An actual public EasyTier peer handshake succeeded using CE's published
+  HTTPS discovery URL node2; several old TCP entry points were unavailable.
+- Windows CE/HMCL applications on a separate device and Internet Minecraft
+  gameplay remain unverified. Protocol/source compatibility is not a substitute
+  for that acceptance test.
+
+Installed build 14 was also checked through its UI with custom nodes left blank:
+created a U/ lobby, connected to actual public discovery peers, closed it, and
+joined an independent Python implementation of the Scaffolding host through a
+public discovery entry point. Member names and real TCP/UDP game payloads matched;
+leaving removed the forward listener. This reference fixture ran on the same Mac,
+not on a Windows device. Disposable test rooms/processes were stopped afterward.

@@ -48,7 +48,7 @@ public struct PCLInvite: Sendable, Equatable, CustomStringConvertible, CustomDeb
     }
 
     public func requireCustomNode() throws {
-        guard nodeID == 0 else { throw PCLLinkError.invalid("此邀请码使用公共节点编号。请让房主在 PCL 联机设置中填写与你相同的自定义节点，再重新创建房间（邀请码结尾应为 02000）。") }
+        guard nodeID == 0 else { throw PCLLinkError.invalid("此邀请码使用原版 PCL 官方节点编号，暂不支持。免填节点联机请让房主创建 CE／HMCL 的 U/ 自动大厅；原版 PCL 可选用双方共同的自定义节点兼容模式（邀请码结尾为 02000）。") }
     }
     public func redacting(_ text: String) -> String {
         text.replacingOccurrences(of: code, with: "[邀请码已隐藏]")
@@ -58,20 +58,20 @@ public struct PCLInvite: Sendable, Equatable, CustomStringConvertible, CustomDeb
 }
 
 public enum PCLLinkPeers {
-    public static func parse(_ input: String) throws -> [String] {
+    public static func parse(_ input: String, maximum: Int = 8) throws -> [String] {
         guard input.utf8.count <= 4096 else { throw PCLLinkError.invalid("自定义节点内容过长。") }
         var seen = Set<String>()
         let peers = try input.split(whereSeparator: { $0.isWhitespace || $0 == "," || $0 == "，" }).map { raw -> String in
             guard let url = URLComponents(string: String(raw)), let scheme = url.scheme?.lowercased(),
-                  ["tcp", "udp", "ws", "wss"].contains(scheme), let host = url.host, !host.isEmpty,
-                  let port = url.port, (1...65535).contains(port), url.user == nil, url.password == nil,
-                  url.query == nil, url.fragment == nil, url.path.isEmpty || url.path == "/",
+                  ["tcp", "udp", "ws", "wss", "https"].contains(scheme), let host = url.host, !host.isEmpty,
+                  let port = url.port ?? (scheme == "https" ? 443 : nil), (1...65535).contains(port), url.user == nil, url.password == nil,
+                  url.query == nil, url.fragment == nil, scheme == "https" || url.path.isEmpty || url.path == "/",
                   let normalized = url.url?.absoluteString else {
-                throw PCLLinkError.invalid("节点应为 tcp://主机:端口、udp://主机:端口 或 ws(s)://主机:端口，不含账号或额外参数。")
+                throw PCLLinkError.invalid("节点应为 tcp://主机:端口、udp://主机:端口、ws(s)://主机:端口 或 HTTPS 发现地址，不含账号或额外参数。")
             }
             return normalized
         }.filter { seen.insert($0).inserted }
-        guard !peers.isEmpty, peers.count <= 8 else { throw PCLLinkError.invalid("请填写 1–8 个自定义节点，房主和加入者必须有共同节点。") }
+        guard !peers.isEmpty, peers.count <= min(maximum, 16) else { throw PCLLinkError.invalid("节点列表为空或超出数量上限。") }
         return peers
     }
 }
@@ -85,14 +85,15 @@ public struct PCLLinkConfiguration: Sendable {
     public let listenerPort: UInt16
     public let localPort: UInt16
     public let latencyFirst: Bool
+    public let automatic: Bool
 
-    public init(invite: PCLInvite, role: Role, peers: [String], rpcPort: UInt16, listenerPort: UInt16, localPort: UInt16, latencyFirst: Bool = false) throws {
+    public init(invite: PCLInvite, role: Role, peers: [String], rpcPort: UInt16, listenerPort: UInt16, localPort: UInt16, latencyFirst: Bool = false, automatic: Bool = false) throws {
         try invite.requireCustomNode()
         self.invite = invite; self.role = role; self.peers = try PCLLinkPeers.parse(peers.joined(separator: ","))
         guard [rpcPort, listenerPort, localPort].allSatisfy({ $0 > 1024 }), Set([rpcPort, listenerPort, localPort, invite.port]).count == 4 else {
             throw PCLLinkError.invalid("联机内部端口冲突，请重试。")
         }
-        self.rpcPort = rpcPort; self.listenerPort = listenerPort; self.localPort = localPort; self.latencyFirst = latencyFirst
+        self.rpcPort = rpcPort; self.listenerPort = listenerPort; self.localPort = localPort; self.latencyFirst = latencyFirst; self.automatic = automatic
     }
     public func coreArguments(configFile: URL) -> [String] {
         ["--config-file", configFile.path, "--rpc-portal", "127.0.0.1:\(rpcPort)",
@@ -117,9 +118,10 @@ public struct PCLLinkConfiguration: Sendable {
 
         [flags]
         no_tun = true
+        bind_device = false
         use_smoltcp = true
         enable_encryption = true
-        encryption_algorithm = "chacha20"
+        encryption_algorithm = "\(automatic ? "aes-gcm" : "chacha20")"
         private_mode = true
         latency_first = \(latencyFirst)
         relay_network_whitelist = ""

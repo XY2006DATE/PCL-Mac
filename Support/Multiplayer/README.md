@@ -13,11 +13,27 @@ application support directory, separate from Minecraft instances.
 
 Protocol reference: https://github.com/Meloong-Git/PCL/wiki/简洁联机标记约定
 
-The first phase implements v02 custom-node invitations (`02000`). It does not
-fetch private official PCL node configuration or implement CE's Scaffolding.
-The core management RPC and game forward listen only on IPv4 loopback; mesh
-listeners use dynamically reserved TCP/UDP ports. The core is configured with
-no TUN and the internal network stack, so no system route/DNS changes are needed.
+The default automatic mode independently implements the public Scaffolding
+lobby code, framing, member heartbeat and game port exchange used by PCL CE,
+HMCL and FCL. It uses AES-GCM, host address 10.114.51.41, a loopback control
+listener, and only whitelists that control port and the game port. It fetches
+public discovery catalogs and shares the public discovery URLs used by CE.
+No official private launcher configuration API is called.
+
+Two optional modes remain: PCL v02 custom-node invitations (02000, chacha20),
+and Mac-only PCLM1 links that carry validated discovery/direct addresses. The
+latter can connect through reachable IPv6 or a LAN without a shared server.
+Neither format is represented as a Scaffolding code.
+
+Protocol references:
+- https://github.com/PCL-Community/PCL-CE/tree/67f540d0e32404d3b18d7d71db955dc8e0785f6b/PCL.Core/Link/Scaffolding
+- https://github.com/Meloong-Git/PCL/wiki/简洁联机标记约定
+- https://github.com/ldoubil/astral.github.io/blob/main/src/data/server.json
+
+Management RPC, Scaffolding control and game forwards are loopback-only.
+The mesh listeners use dynamically allocated TCP/UDP ports with IPv6 enabled.
+The runtime uses no TUN or system DNS/route changes; it follows the existing
+system route rather than forcing a physical interface.
 
 Integration validation is opt-in; see `MultiplayerIntegrationTests.swift`.
 Use disposable verified runtimes and loopback fixtures, never a user's game files.

@@ -265,7 +265,7 @@ struct LauncherView: View {
                 }
             }
             PCLCard(title: "功能说明", collapsible: true, expanded: false) {
-                Text("已提供原版游戏与 Forge、NeoForge、Fabric、Quilt 安装、本地整合包导入、补全文件、版本选择、Java 检测与离线启动。版本设置支持组件修改、Mod 管理、完整 ZIP 与 Modrinth 整合包导出。社区资源支持 Mod、整合包、数据包、资源包与光影包的搜索、筛选、版本详情和下载安装，可自动补全必需前置 Mod。联机支持通过自定义节点创建和加入原版 PCL 02 房间。微软正版授权、PCL 官方节点及 CE 的 Scaffolding 房间暂未接入。")
+                Text("已提供原版游戏与 Forge、NeoForge、Fabric、Quilt 安装、本地整合包导入、补全文件、版本选择、Java 检测与离线启动。版本设置支持组件修改、Mod 管理、完整 ZIP 与 Modrinth 整合包导出。社区资源支持 Mod、整合包、数据包、资源包与光影包的搜索、筛选、版本详情和下载安装，可自动补全必需前置 Mod。联机默认自动发现公共入口，支持 Scaffolding 大厅协议，并保留 Mac IPv6／局域网直连与原版 PCL 自定义节点模式。微软正版授权与 PCL 官方节点编号暂未接入。")
                     .font(.custom("PCL English", size: 12)).foregroundStyle(.secondary).lineSpacing(5)
             }
         }

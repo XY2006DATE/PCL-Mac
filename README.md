@@ -64,7 +64,7 @@ python3 scripts/make-version-action-icons.py --check
 
 ## 已知限制
 
-尚未实现 Microsoft / Xbox 正版登录、Java 自动安装或 Mod 联网自动更新。联机暂不支持 PCL 官方节点编号或 CE 的 Scaffolding 房间码。离线身份不能连接要求正版验证的服务器。旧游戏版本可能需要 Intel Java 与 Rosetta，并非所有版本、加载器或整合包都已在 macOS 上验证。
+尚未实现 Microsoft / Xbox 正版登录、Java 自动安装或 Mod 联网自动更新。联机暂不支持原版 PCL 官方节点编号；Scaffolding 按公开源码实现基础协议，Windows 实机跨启动器游玩仍待验收。离线身份不能连接要求正版验证的服务器。旧游戏版本可能需要 Intel Java 与 Rosetta，并非所有版本、加载器或整合包都已在 macOS 上验证。
 
 暂不支持 ZIP64、加密或分卷 ZIP、MultiMC 自定义补丁与外部启动命令。完整 ZIP 仅包含所选实例当前 macOS 运行所需文件。Windows 专属选项及尚未移植的功能保持禁用。
 
@@ -88,22 +88,27 @@ python3 scripts/make-version-action-icons.py --check
 
 下载线程为跨原版、加载器、Mod 和整合包的文件传输并发上限（1–256，默认 64）。速度滑块沿用原版的 0.1–1.5、2–10、11–20 M/s 及不限速刻度，作用于所有文件下载的合计流量；已校验文件复用不消耗下载预算。元数据和主页请求不受文件下载限速影响。修改参数不会删除缓存或改变文件校验规则。
 
-## Mac / Windows 联机（第一阶段）
+## 自动联机与 Mac / Windows 互通
 
-联机按原版 PCL 的公开 v02 协议实现，使用 EasyTier 2.6.4、chacha20、固定房主虚拟 IP 和本机端口转发，无需创建系统虚拟网卡或管理员权限。首次使用从 EasyTier 官方 Release 下载对应 CPU 的模块并核对固定 SHA-256，后续校验并复用缓存。模块由独立进程管理器随启动器退出而停止，不安装后台服务。
+默认自动使用公共发现服务，无需自建服务器、填写节点或微软登录。进入游戏选择“对局域网开放”，在“联机”填写游戏提示的端口并创建大厅，然后分享 `U/` 大厅码。加入者可使用 PCL Mac版，或在支持 Scaffolding 的 Windows PCL CE／HMCL／FCL 中输入大厅码。协议实现与公开源码对照完成，**尚未完成独立 Windows 设备的 Minecraft 游玩验收**，不应把本机测试当作双机兼容性结论。
 
-1. 双方在“设置 → 联机 → 自定义节点”填写至少一个共同且允许外部网络发现／中继的 EasyTier 节点，例如 `tcp://你的节点:11010`。Windows 端应使用原版 PCL 的同名设置。
-2. 房主进入相同游戏／整合包版本，选择“对局域网开放”，将游戏提示的端口填入 Mac 版“联机 → 创建房间”；也可由 Windows 原版 PCL 创建。
-3. 将结尾为 `02000` 的邀请码发给朋友，在另一端加入。Mac 加入后会广播本机转发房间，也可复制界面中的 `127.0.0.1:端口` 直接连接。
-4. 关闭房间、离开房间或退出启动器会停止本次联机。邀请码只保存在当前房间内存与权限为 0600 的临时配置中，日志隐藏邀请码和密钥。
+启动器并行获取 EasyTier 公共节点目录和 Astral 发布的节点目录，校验地址并缓存一天；目录不可用时使用内置候选入口。自动模式同时包含 CE 使用的公共发现地址。EasyTier 尝试 IPv6／IPv4 点对点连接，能否打洞与中继取决于双方网络和公共服务可用性。连接状态显示实际直连／中继；仅生成大厅码时显示“等待朋友加入”，不会把本地启动成功当作互联网已互通。公共节点均为社区服务，不是本项目运营的服务器。
 
-这是自定义节点模式，不调用 PCL 未公开的官方节点配置接口。CE 的 Scaffolding 使用另一套协议，后续单独实现。离线用户名、模组和游戏版本仍需匹配房主的设置；不会修改服务器的正版验证选项。
+“设置 → 联机”提供可选的创建模式：
 
-验证覆盖邀请码、配置约束、节点地址校验、凭据隐藏、取消与端口分配，以及真实 EasyTier 双实例经本地共享节点发现房主并往返 TCP / UDP 数据。该测试证明本机隧道流程，不代表已完成 Mac / Windows 双机 Minecraft 游玩验收。
+- **自动联机（默认）**：独立实现 Scaffolding 的 `U/` 编码、校验、AES-GCM 网络身份、房主发现、游戏端口交换及成员心跳。使用固定虚拟地址 `10.114.51.41` 与受限控制端口；不创建系统虚拟网卡，不改系统 DNS／路由，不需管理员权限。
+- **Mac 直连（IPv6／局域网）**：生成携带房主真实接口地址及发现入口的 `PCLM1.` 连接码。可达的公网 IPv6 或同一局域网中，即使没有公共节点也能连接。该扩展码供 Mac 版使用，不作为原版 PCL／CE 大厅码。
+- **原版 PCL 自定义节点**：保留原版 `02`／chacha20 协议，双方使用共同节点，邀请码以 `02000` 结尾。这是可选兼容模式，不是默认联机的前置条件。
 
-可将已核对官方 SHA-256 的 `easytier-core`、`easytier-cli` 放在独立测试目录，并编译进程管理器后运行：
+首次使用下载并校验固定版本 EasyTier 2.6.4 的官方 macOS 模块；之后核对并复用缓存。加入后广播本机 Minecraft 房间，也可以复制 `127.0.0.1:端口` 直接连接。离开房间会关闭转发、控制服务和本次 EasyTier 进程。房间凭据不写入日志；临时配置权限为 0600。房间名与成员资料只在该房间内交换，不发送到节点目录 API。
+
+验证包括：实际公共节点握手；真实 EasyTier 双实例的 IPv6／局域网无共享服务器连接；本地独立共享节点的房主发现、Scaffolding 控制协议、成员资料、TCP／UDP 游戏数据往返；取消、离开清理、目录故障回退及模块完整性。实际互联网双机穿透与 Windows 游戏仍需单独验证。
+
+使用已核对官方 SHA-256 的模块进行可选验证：
 
 ```sh
 xcrun clang -O2 -Wall -Wextra Support/Multiplayer/PCLLinkSupervisor.c -o /path/to/test-runtime/PCLLinkSupervisor
 PCL_EASYTIER_TEST_DIR=/path/to/test-runtime swift test --filter MultiplayerIntegrationTests
 ```
+
+协议参考：[PCL CE Scaffolding 实现](https://github.com/PCL-Community/PCL-CE/tree/dev/PCL.Core/Link/Scaffolding)、[原版 PCL v02](https://github.com/Meloong-Git/PCL/wiki/简洁联机标记约定)。

@@ -69,7 +69,7 @@ import SwiftUI
         task = Task { [self] in
             do {
                 await cleanup?.value; try Task.checkCancellation()
-                if let port { try await LinkTCPProbe.connect(port: port) }
+                if let port { try await LinkTCPProbe.requireGame(port: port) }
                 let peers: [String]
                 if let configured { peers = configured } else { peers = try PCLLinkDiscovery.scaffoldingPeers(await discovery.resolve()) }
                 let binaries = try await runtime.prepare { [weak self] progress in
@@ -96,7 +96,7 @@ import SwiftUI
         task = Task { [self] in
             do {
                 await cleanup?.value; try Task.checkCancellation()
-                if role == .host { try await LinkTCPProbe.connect(port: invite.port) }
+                if role == .host { try await LinkTCPProbe.requireGame(port: invite.port) }
                 let peers: [String]
                 if let configured { peers = configured }
                 else {
@@ -212,12 +212,12 @@ struct MultiplayerView: View {
                             PCLIcon("RoomCreate").frame(width: 40, height: 40).foregroundStyle(ClassicTheme.blue)
                             VStack(alignment: .leading, spacing: 8) {
                                 Text("邀请朋友加入你的单人游戏。").font(.custom("PCL English", size: 15))
-                                Text("进入游戏，选择“对局域网开放”，然后填写游戏提示的端口。").foregroundStyle(.secondary)
+                                Text("先启动 Minecraft 并进入单人世界，点击“对局域网开放”，再填写聊天中显示的端口，并保持世界运行。").foregroundStyle(.secondary)
                             }
                         }
                         HStack {
                             Text("游戏端口").frame(width: 85, alignment: .leading)
-                            TextField("例如 25565", text: $model.portText).textFieldStyle(.roundedBorder).frame(maxWidth: 220)
+                            TextField("游戏内开放后提示的端口", text: $model.portText).textFieldStyle(.roundedBorder).frame(maxWidth: 220)
                             Button("创建房间") { model.create(playerName: store.preferences.playerName) }.buttonStyle(PCLActionStyle(highlight: true))
                         }
                     }.padding(.vertical, 15)

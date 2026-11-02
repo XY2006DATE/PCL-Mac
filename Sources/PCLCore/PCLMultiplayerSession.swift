@@ -74,7 +74,7 @@ public actor PCLMultiplayerSession {
             let hints = PCLLinkDiscovery.directPeers(port: listener)
             shareCode = try PCLRoomLink(invite: invite, peers: Array((hints + peers).prefix(8))).code
         } else { shareCode = invite.code }
-        if role == .host { try await LinkTCPProbe.connect(port: invite.port) }
+        if role == .host { try await LinkTCPProbe.requireGame(port: invite.port) }
         try check(operation)
         guard FileManager.default.isExecutableFile(atPath: supervisor.path) else { throw PCLLinkError.invalid("缺少联机进程管理模块，请使用完整的 Mac 应用构建。") }
         let folder = directory.appendingPathComponent(UUID().uuidString, isDirectory: true)
@@ -103,7 +103,7 @@ public actor PCLMultiplayerSession {
                         ? (automatic ? list.contains(where: { $0.isLocal && $0.isHost }) : list.contains(where: { !$0.isLocal && ($0.latencyMS ?? 0) > 0 }))
                         : list.contains(where: { $0.isHost && !$0.isLocal && ($0.latencyMS ?? 0) > 0 }) && list.contains(where: { $0.isLocal && !$0.ipv4.isEmpty })
                     if foundTarget {
-                        if role == .guest { try await LinkTCPProbe.connect(port: local) }
+                        if role == .guest { try await LinkTCPProbe.waitForForward(port: local) }
                         ready = list; break
                     }
                 }
@@ -124,7 +124,7 @@ public actor PCLMultiplayerSession {
                       connectedPeers.contains(where: { $0.isLocal && !$0.ipv4.isEmpty }) else {
                     throw PCLLinkError.invalid("房间网络尚未就绪，请检查房主状态后重试。")
                 }
-                try await LinkTCPProbe.connect(port: local)
+                try await LinkTCPProbe.waitForForward(port: local)
                 try check(operation)
             }
             if role == .guest { advertisement = try? LinkLANAdvertisement(port: local) }

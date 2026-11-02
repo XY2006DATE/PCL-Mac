@@ -17,7 +17,7 @@ public actor ScaffoldingSession {
         stop(); let operation = generation
         try Task.checkCancellation()
         let isHost = gamePort != nil
-        if let gamePort { guard gamePort > 1024 else { throw PCLLinkError.invalid("游戏端口无效。") }; try await LinkTCPProbe.connect(port: gamePort) }
+        if let gamePort { guard gamePort > 1024 else { throw PCLLinkError.invalid("游戏端口无效。") }; try await LinkTCPProbe.requireGame(port: gamePort) }
         try check(operation)
         let nodes = try PCLLinkPeers.parse(peers.joined(separator: ","), maximum: 16)
         let ports = LinkPortReservations(excluding: Set([gamePort ?? 0])); defer { ports.release() }
@@ -77,7 +77,7 @@ public actor ScaffoldingSession {
                 guard remoteGamePort > 1024 else { throw PCLLinkError.invalid("房主尚未对局域网开放游戏。") }
                 for proto in ["tcp", "udp"] { try await Self.forward(cli: binaries.cli, rpc: rpc, proto: proto, local: local, remote: remoteGamePort) }
                 profiles = try await Self.heartbeat(port: control, profile: profile)
-                try check(operation); try await LinkTCPProbe.connect(port: local)
+                try check(operation); try await LinkTCPProbe.waitForForward(port: local)
                 advertisement = try? LinkLANAdvertisement(port: local)
             }
             try check(operation)

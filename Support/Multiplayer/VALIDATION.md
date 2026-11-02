@@ -53,3 +53,21 @@ joined an independent Python implementation of the Scaffolding host through a
 public discovery entry point. Member names and real TCP/UDP game payloads matched;
 leaving removed the forward listener. This reference fixture ran on the same Mac,
 not on a Windows device. Disposable test rooms/processes were stopped afterward.
+
+## Local game/forward port diagnostic follow-up (build 15)
+
+Hosting checks the actual loopback game listener before resolving public nodes
+or downloading a runtime. A refused game port now identifies the Minecraft port
+and explains opening the current singleplayer world to LAN. Forward readiness
+has a separate bounded retry and message; permission failures remain distinct.
+The nonblocking socket probe reads SO_ERROR and closes only its own descriptor.
+
+Six real TCP tests cover closed/refused game ports, listening game ports, delayed
+forward listeners, forward deadlines and cancellation. On Darwin a bound but
+non-listening socket drops SYNs, so the refusal fixture closes its reservation.
+Full regression: 322 tests, 308 passed, 14 opt-in tests skipped, zero failures,
+including all four real EasyTier integration cases and persistent control frames.
+
+The signed universal build 15 was installed in /Applications and checked in its
+UI: creating a room with unbound port 11464 immediately displayed the Minecraft
+LAN-world instructions, with no generic local-port timeout or relay startup.

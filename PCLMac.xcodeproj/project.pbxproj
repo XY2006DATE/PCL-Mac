@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		0100531F73B2C2A75C04F49C /* InstanceNavigation in Resources */ = {isa = PBXBuildFile; fileRef = EC59394A96C7C7F5A79B8EED /* InstanceNavigation */; };
+		02FDA139F5FF7060EBAFFE67 /* GlobalSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B586E5672ACE287702E48536 /* GlobalSettingsView.swift */; };
 		0A0D69234B82413C9F9F61BA /* Anvil.png in Resources */ = {isa = PBXBuildFile; fileRef = E48F314DFC5902D68FB0D2A0 /* Anvil.png */; };
 		147860DDDFAC48EC2056B3D9 /* VersionSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 227279B87BE6AD0F75902ED4 /* VersionSettingsView.swift */; };
 		151D7FD6DF224A718F9FB101 /* PCLMacApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14E9C1AEC56652D249A094EB /* PCLMacApp.swift */; };
@@ -70,6 +71,7 @@
 		290124DDCD602A68C66080B7 /* VersionSettingsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VersionSettingsStore.swift; sourceTree = "<group>"; };
 		29BDF24CA90BD2E59768B280 /* VersionExportStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VersionExportStore.swift; sourceTree = "<group>"; };
 		2C1E15D53A646F0A06E9ED15 /* HerobrineXia.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = HerobrineXia.png; sourceTree = "<group>"; };
+		326321AF5FBC4F088CADABE0 /* PCL-Mac */ = {isa = PBXFileReference; lastKnownFileType = folder; name = "PCL-Mac"; path = .; sourceTree = SOURCE_ROOT; };
 		38017379527A5A5ED6CAB896 /* Fabric.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = Fabric.png; sourceTree = "<group>"; };
 		3AFBF62ED3B9C4B366FA7983 /* LICENCE */ = {isa = PBXFileReference; path = LICENCE; sourceTree = "<group>"; };
 		3E9AF0C8BE8CB8637525F2E5 /* ModdedInstallStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModdedInstallStore.swift; sourceTree = "<group>"; };
@@ -96,6 +98,7 @@
 		97D9963816292185E8402730 /* InstallProgressViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstallProgressViews.swift; sourceTree = "<group>"; };
 		9B63D61BCF23B6B42C133A01 /* AppIcon.icns */ = {isa = PBXFileReference; lastKnownFileType = image.icns; path = AppIcon.icns; sourceTree = "<group>"; };
 		B1A2DBECFFF9B240BB3B426F /* PCLResources.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PCLResources.swift; sourceTree = "<group>"; };
+		B586E5672ACE287702E48536 /* GlobalSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlobalSettingsView.swift; sourceTree = "<group>"; };
 		B6CBD3288507C6F933D7490B /* DownloadLibraryViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadLibraryViews.swift; sourceTree = "<group>"; };
 		BFA991736970AAF5F3C2CC5B /* VersionRowActions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VersionRowActions.swift; sourceTree = "<group>"; };
 		C0D871E88826D7F522CA2CAD /* CommandBlock.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = CommandBlock.png; sourceTree = "<group>"; };
@@ -108,7 +111,6 @@
 		F3EE33379FFECE0F20AC6AD4 /* RedstoneLampOn.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = RedstoneLampOn.png; sourceTree = "<group>"; };
 		F6788752924320A9E7714317 /* PCLComboBox.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PCLComboBox.swift; sourceTree = "<group>"; };
 		F7D580D92947BC1D07AB65B2 /* OptiFabric.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = OptiFabric.png; sourceTree = "<group>"; };
-		F90A7080C71CDB6EF39003EA /* macOS */ = {isa = PBXFileReference; lastKnownFileType = folder; name = macOS; path = .; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -138,6 +140,7 @@
 				87B7FC9C25E828C94571FF4D /* CommunityResourceStore.swift */,
 				524C3E6F3DBEE709B2A8BD5F /* CommunityResourceViews.swift */,
 				B6CBD3288507C6F933D7490B /* DownloadLibraryViews.swift */,
+				B586E5672ACE287702E48536 /* GlobalSettingsView.swift */,
 				97D9963816292185E8402730 /* InstallProgressViews.swift */,
 				C6EF08F1BA0A1684719CC9B0 /* InstanceNavigation.swift */,
 				48F106AA5F8A2E5E48DF9EEB /* LauncherStore.swift */,
@@ -165,7 +168,7 @@
 		2088B6346BFE5724F3CB0102 /* Packages */ = {
 			isa = PBXGroup;
 			children = (
-				F90A7080C71CDB6EF39003EA /* macOS */,
+				326321AF5FBC4F088CADABE0 /* PCL-Mac */,
 			);
 			name = Packages;
 			sourceTree = "<group>";
@@ -315,6 +318,7 @@
 				B066F60B5F87210695A6E830 /* CommunityResourceStore.swift in Sources */,
 				FFF12DCF3A6872653F73AE0E /* CommunityResourceViews.swift in Sources */,
 				809812D25DB10A95C4BC4075 /* DownloadLibraryViews.swift in Sources */,
+				02FDA139F5FF7060EBAFFE67 /* GlobalSettingsView.swift in Sources */,
 				F9461BC175E3332353ADB2CE /* InstallProgressViews.swift in Sources */,
 				9658A6CBCE5C4A4191CC8827 /* InstanceNavigation.swift in Sources */,
 				E9338EB69FD545C47C4B6A79 /* LauncherStore.swift in Sources */,

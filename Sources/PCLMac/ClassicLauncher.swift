@@ -24,7 +24,7 @@ struct ClassicHeader: View {
                             .font(.custom("PCL English", size: 18)).foregroundStyle(.white)
                     }.buttonStyle(.plain).padding(.leading, 90)
                 } else {
-                    Text("PCL").font(.custom("PCL English", size: 25)).tracking(1).padding(.leading, 90)
+                    Text(store.globalSettings.title.isEmpty ? "PCL" : store.globalSettings.title).font(.custom("PCL English", size: 25)).tracking(1).padding(.leading, 90)
                 }
                 Spacer()
             }.foregroundStyle(.white)
@@ -229,10 +229,10 @@ struct ClassicSectionSidebar: View {
                         row("资源包", icon: "Resourcepack", active: store.communityState.kind == .resourcepack) { store.openCommunity(.resourcepack) }
                         row("光影包", icon: "Shader", active: store.communityState.kind == .shader) { store.openCommunity(.shader) }
                     case .settings:
-                        row("启动", icon: "SetupLaunch", active: true) {}
+                        row("启动", icon: "SetupLaunch", active: store.settingsTab == "启动") { store.settingsTab = "启动" }
                         row("联机", icon: "Online") {}.disabled(true)
-                        row("个性化", icon: "Personalize") {}.disabled(true)
-                        row("其他", icon: "SetupOther") {}.disabled(true)
+                        row("个性化", icon: "Personalize", active: store.settingsTab == "个性化") { store.settingsTab = "个性化" }
+                        row("其他", icon: "SetupOther", active: store.settingsTab == "其他") { store.settingsTab = "其他" }
                     default:
                         row("帮助", icon: "Help") {}.disabled(true)
                         row("关于与鸣谢", icon: "About", active: store.page == .about) { store.page = .about }

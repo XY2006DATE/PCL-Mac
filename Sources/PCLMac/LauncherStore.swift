@@ -1,5 +1,6 @@
 import AppKit
 import Combine
+import AVFoundation
 import Foundation
 import PCLCore
 
@@ -46,6 +47,13 @@ struct LauncherPreferences: Codable {
 }
 
 @MainActor final class LauncherStore: ObservableObject {
+    @Published var settingsTab = "启动"
+    @Published var globalSettings = GlobalLauncherSettings.load() {
+        didSet { globalSettings.save(); applyPersonalization() }
+    }
+    var loadedBackgroundPath = ""
+    @Published var backgroundImage: NSImage?
+    var musicPlayer: AVAudioPlayer?
     @Published var page: LauncherPage = .launch
     @Published var preferences: LauncherPreferences { didSet { savePreferences() } }
     @Published var installedVersions: [InstalledVersion] = []
@@ -153,6 +161,8 @@ struct LauncherPreferences: Codable {
     }
 
     func start() async {
+        applyPersonalization()
+        if globalSettings.musicAuto && !globalSettings.musicPath.isEmpty { playMusic() }
         await refreshLocal()
         if !didRestoreOfflineLogin {
             didRestoreOfflineLogin = true
@@ -348,6 +358,7 @@ struct LauncherPreferences: Codable {
                     }, onExit: { code in
                         Task { @MainActor in
                             state.isGameRunning = false
+                            state.applyGameVisibility(started: false)
                             let stopped = state.requestedGameStop
                             state.statusMessage = stopped ? "游戏已停止" : (code == 0 ? "游戏已退出" : "游戏异常退出（\(code)）")
                             state.appendLog(state.statusMessage)
@@ -356,6 +367,7 @@ struct LauncherPreferences: Codable {
                     })
                 }.value
                 isGameRunning = launcher.isRunning
+                if isGameRunning { applyGameVisibility(started: true) }
                 statusMessage = isGameRunning ? "游戏运行中" : "游戏已退出"
             } catch { report(error) }
             isLaunching = false

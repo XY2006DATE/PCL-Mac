@@ -254,7 +254,7 @@ struct VersionSettingsView: View {
             }
             HStack {
                 Spacer()
-                Button("全局设置") { store.saveVersionSettings(); store.page = .settings }.buttonStyle(PCLActionStyle())
+                Button("全局设置") { store.saveVersionSettings(); store.settingsTab = "启动"; store.page = .settings }.buttonStyle(PCLActionStyle())
                 Spacer()
             }.padding(.top, 3)
         }

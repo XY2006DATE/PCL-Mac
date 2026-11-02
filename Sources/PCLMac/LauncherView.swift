@@ -14,10 +14,17 @@ struct LauncherView: View {
                         if store.page == .launch { ClassicLaunchPanel() }
                         else { ClassicSectionSidebar() }
                     }
-                    .frame(width: showsInstallProgress || store.page == .downloads || store.page == .versionSettings ? 200 : min(370, max(300, geometry.size.width * 0.342)))
+                    .frame(width: showsInstallProgress || store.page == .downloads || store.page == .versionSettings || store.page == .settings ? 200 : min(370, max(300, geometry.size.width * 0.342)))
                     Rectangle().fill(Color.pclBlue.opacity(0.08)).frame(width: 1)
                     ZStack {
                         ClassicTheme.background
+                        if let background = store.backgroundImage {
+                            Image(nsImage: background).resizable()
+                                .aspectRatio(contentMode: store.globalSettings.backgroundFit == "fill" ? .fill : .fit)
+                                .frame(maxWidth: .infinity, maxHeight: .infinity).clipped()
+                                .blur(radius: store.globalSettings.backgroundBlur)
+                                .opacity(store.globalSettings.backgroundOpacity)
+                        }
                         if store.page != .launch {
                             ScrollView {
                                 VStack(alignment: .leading, spacing: store.page == .versionSettings ? 15 : 22) {
@@ -26,7 +33,7 @@ struct LauncherView: View {
                                     case .library: PCLVersionLibraryPage()
                                     case .downloads: PCLDownloadsPage()
                                     case .activity: activityPage
-                                    case .settings: settingsPage
+                                    case .settings: GlobalSettingsView(launchBasics: AnyView(settingsPage))
                                     case .about: aboutPage
                                     case .versionSettings: VersionSettingsView()
                                     }
@@ -117,44 +124,22 @@ struct LauncherView: View {
         }
     }
 
-    private var settingsPage: some View {
+    var settingsPage: some View {
         Group {
-            PCLCard(title: "启动选项") {
-                VStack(alignment: .leading, spacing: 13) {
-                    HStack(spacing: 15) {
-                        settingLabel("玩家名")
-                        TextField("游戏用户名", text: $store.preferences.playerName)
-                            .textFieldStyle(.roundedBorder).font(.custom("PCL English", size: 13)).frame(maxWidth: .infinity)
-                            .onSubmit { store.completeOfflineLogin(reportErrors: true) }
-                    }
-                    if let warning = store.offlineNameWarning {
-                        Text(warning).font(.custom("PCL English", size: 11)).foregroundStyle(.orange)
-                            .padding(.leading, 115).lineSpacing(3)
-                    }
-                    HStack(alignment: .center, spacing: 15) {
-                        settingLabel("游戏文件夹")
-                        Text(store.preferences.gamePath).font(.custom("PCL English", size: 11)).foregroundStyle(.secondary)
-                            .lineLimit(2).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading)
-                        Button("更改") { store.chooseGameDirectory() }.buttonStyle(PCLActionStyle())
-                            .disabled(store.isBusy || store.isGameRunning)
-                    }
-                    HStack { Spacer().frame(width: 100); Button("打开游戏文件夹") { store.revealGameDirectory() }.buttonStyle(PCLActionStyle()) }
-                }
-            }
             PCLCard(title: "内存分配") {
                 VStack(alignment: .leading, spacing: 15) {
                     HStack(spacing: 15) {
                         HStack(spacing: 7) {
                             PCLIcon("CircleFilled").frame(width: 14, height: 14).foregroundStyle(Color.pclBlue)
-                            Text("自定义").font(.custom("PCL English", size: 13))
+                            Text(store.globalSettings.memoryAuto ? "自动配置" : "自定义").font(.custom("PCL English", size: 13))
                         }.frame(width: 100, alignment: .leading)
                         Slider(value: Binding(get: { Double(store.preferences.memoryMB) }, set: { store.preferences.memoryMB = Int($0) }),
-                               in: 1024...Double(store.memoryLimit), step: 512)
+                               in: 1024...Double(store.memoryLimit), step: 512).disabled(store.globalSettings.memoryAuto)
                     }
                     HStack(alignment: .top) {
                         VStack(alignment: .leading, spacing: 4) {
                             Text("游戏分配").font(.custom("PCL English", size: 11)).foregroundStyle(.secondary)
-                            Text(store.memoryLabel).font(.custom("PCL English", size: 16)).foregroundStyle(Color.pclBlue)
+                            Text(store.globalSettings.memoryAuto ? (store.selectedVersion.map { String(format: "%.1f GB", Double(store.effectiveVersionMemoryMB(for: $0)) / 1024) } ?? "按版本配置") : store.memoryLabel).font(.custom("PCL English", size: 16)).foregroundStyle(Color.pclBlue)
                         }
                         Spacer()
                         VStack(alignment: .trailing, spacing: 4) {
@@ -183,6 +168,18 @@ struct LauncherView: View {
             }
             PCLCard(title: "高级选项", collapsible: true, expanded: false) {
                 VStack(alignment: .leading, spacing: 13) {
+                    HStack(spacing: 15) {
+                        settingLabel("游戏参数")
+                        TextField("额外的游戏参数", text: $store.globalSettings.gameArguments, axis: .vertical).textFieldStyle(.roundedBorder)
+                    }
+                    HStack(spacing: 15) {
+                        settingLabel("内存管理")
+                        PCLComboBox(title: "内存管理", selection: $store.globalSettings.garbageCollector, options: [
+                            .init(title: "尽量使用 ZGC", value: "zgc"), .init(title: "尽量使用分代 ZGC", value: "generational-zgc"),
+                            .init(title: "标准 G1GC", value: "g1"), .init(title: "调优 G1GC", value: "g1tuned"),
+                            .init(title: "不指定（可自定义）", value: "none")
+                        ]).frame(height: 28)
+                    }
                     HStack(alignment: .top, spacing: 15) {
                         settingLabel("Java 虚拟机参数").padding(.top, 6)
                         TextEditor(text: $store.preferences.extraJVMArguments)
@@ -204,7 +201,7 @@ struct LauncherView: View {
                         Button("手动导入 Java") { store.chooseJava() }.buttonStyle(PCLActionStyle())
                     }
                     if let java = store.selectedJava {
-                        Text(java.executable.path).font(.custom("PCL English", size: 10)).foregroundStyle(.secondary).lineLimit(2).textSelection(.enabled)
+                        Text("将会使用：\(java.displayName)\n\(java.executable.path)").font(.custom("PCL English", size: 10)).foregroundStyle(.secondary).lineLimit(2).textSelection(.enabled)
                     } else {
                         Text("未找到可用的 Java，请安装后重新搜索，或手动导入。").font(.custom("PCL English", size: 11)).foregroundStyle(.orange)
                     }

@@ -123,7 +123,12 @@ import PCLCore
         let settings = profile ?? profileSettings(for: version)
         let runtime = settings.isolateGameDirectory ? version.directory : gameDirectory
         let mods = (try? FileManager.default.contentsOfDirectory(at: runtime.appendingPathComponent("mods"), includingPropertiesForKeys: nil)) ?? []
-        return settings.resolvedMemoryMB(globalValue: preferences.memoryMB, availableMemoryMB: versionAvailableMemoryMB,
+        var global = VersionProfileSettings()
+        global.memoryMode = globalSettings.memoryAuto ? "auto" : "custom"
+        global.memoryMB = preferences.memoryMB
+        let globalMemory = global.resolvedMemoryMB(globalValue: preferences.memoryMB, availableMemoryMB: versionAvailableMemoryMB,
+                                                   modCount: mods.count)
+        return settings.resolvedMemoryMB(globalValue: globalMemory, availableMemoryMB: versionAvailableMemoryMB,
                                          modCount: mods.filter { ["jar", "litemod"].contains($0.pathExtension.lowercased()) }.count)
     }
 
@@ -233,6 +238,7 @@ import PCLCore
             if let error = profileSaveError { throw settingsError(error) }
         }
         let profile = profileSettings(for: version)
+        try globalSettings.validate()
         try profile.validate()
         let java = try VersionJavaSelection(version: version, profile: profile, globalJavaPath: preferences.javaPath,
                                             runtimes: javaRuntimes).resolve(fallback: suppliedJava)
@@ -240,11 +246,13 @@ import PCLCore
         let independentWindow = profile.windowConfigurationMode == "custom"
         return LaunchConfiguration(gameDirectory: gameDirectory, versionID: version.id, playerName: player,
             javaExecutable: java.executable, memoryMB: effectiveVersionMemoryMB(for: version, profile: profile),
-            width: independentWindow ? profile.width : 1100, height: independentWindow ? profile.height : 700,
+            width: independentWindow ? profile.width : globalSettings.width, height: independentWindow ? profile.height : globalSettings.height,
             extraJVMArguments: profile.jvmConfigurationMode == "global" ? preferences.extraJVMArguments : profile.extraJVMArguments,
             offlineSkinModel: offlineSkinModel, runtimeGameDirectory: profile.isolateGameDirectory ? version.directory : nil,
-            extraGameArguments: profile.extraGameArguments, serverAddress: profile.serverAddress, customInfo: profile.customInfo,
-            garbageCollector: profile.garbageCollector, javaMajorVersion: java.majorVersion)
+            extraGameArguments: (profile.extraGameArguments.isEmpty ? globalSettings.gameArguments : profile.extraGameArguments) +
+                (!independentWindow && globalSettings.fullscreen ? " --fullscreen" : ""),
+            serverAddress: profile.serverAddress, customInfo: profile.customInfo.isEmpty ? globalSettings.customInfo : profile.customInfo,
+            garbageCollector: profile.garbageCollector == "global" ? globalSettings.garbageCollector : profile.garbageCollector, javaMajorVersion: java.majorVersion)
     }
 
     func chooseVersionJava() {

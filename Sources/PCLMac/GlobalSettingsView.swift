@@ -173,14 +173,11 @@ struct GlobalSettingsView: View {
                     row("不透明度") { Slider(value: $store.globalSettings.opacity, in: 0.4...1) }
                     row("主题") { themeChoices([0, 1, 2, 3, 4]) }
                     row("隐藏主题") { themeChoices([5, 12, 6, 7, 13, 8, 9, 10, 11, 14]) }
-                    Text("遵循原项目开源分支：主题检查直接通过。官方赞助解锁码校验未公开，本版不生成或验证官方解锁码。")
-                        .font(.custom("PCL English", size: 11)).foregroundStyle(.secondary)
                     if store.globalSettings.theme == 14 {
                         row("色调") { Slider(value: $store.globalSettings.themeHue, in: 0...360) }
                         row("饱和度") { Slider(value: $store.globalSettings.themeSaturation, in: 0...1) }
                         row("亮度") { Slider(value: $store.globalSettings.themeBrightness, in: 0.2...1) }
                     }
-                    Link("支持 PCL 开发！", destination: URL(string: "https://meloong.com/afd/a/LTCat")!).buttonStyle(PCLActionStyle())
                 }
             }
             PCLCard(title: "背景图片") {

@@ -1,0 +1,8 @@
+<!-- PCL Mac版主页。支持 MyCard、TextBlock、MyHint、MyButton、MyImage、StackPanel 和 Grid。 -->
+<local:MyCard Title="欢迎回来" CanSwap="True" IsSwapped="False">
+  <StackPanel>
+    <TextBlock Text="欢迎使用 PCL Mac版！" FontSize="18" />
+    <local:MyHint Text="在此文件中编辑主页，保存后点击刷新主页。" Theme="Blue" />
+    <local:MyButton Text="Minecraft Wiki" EventType="打开网页" EventData="https://zh.minecraft.wiki/" />
+  </StackPanel>
+</local:MyCard>

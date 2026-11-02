@@ -92,10 +92,10 @@ private enum PCLComboBoxStyle {
     static let font = NSFont(name: "PCL English", size: 13) ?? .systemFont(ofSize: 13)
     // Default runtime theme: ThemeRefresh, hue 210 / saturation 85.
     static let text = NSColor(srgbRed: 0x33 / 255, green: 0x3e / 255, blue: 0x48 / 255, alpha: 1)
-    static let border = NSColor(srgbRed: 0x12 / 255, green: 0x7a / 255, blue: 0xe1 / 255, alpha: 1)
-    static let selected = NSColor(srgbRed: 0xcd / 255, green: 0xe4 / 255, blue: 0xfb / 255, alpha: 1)
-    static let openBackground = NSColor(srgbRed: 0xe3 / 255, green: 0xf0 / 255, blue: 0xfd / 255, alpha: 1)
-    static let hover = NSColor(srgbRed: 0xee / 255, green: 0xf6 / 255, blue: 0xfe / 255, alpha: 1)
+    static var border: NSColor { NSColor(ThemePalette.blue) }
+    static var selected: NSColor { NSColor(ThemePalette.color(ThemePalette.hue, ThemePalette.saturation, 91)) }
+    static var openBackground: NSColor { NSColor(ThemePalette.color(ThemePalette.hue, ThemePalette.saturation, 95)) }
+    static var hover: NSColor { NSColor(ThemePalette.color(ThemePalette.hue, ThemePalette.saturation, 97)) }
     static let lineHeight = ceil(NSLayoutManager().defaultLineHeight(for: font))
     static let rowHeight = lineHeight + 8 // MyComboBoxItem: Padding="6,4".
 }

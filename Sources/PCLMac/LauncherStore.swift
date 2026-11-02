@@ -47,9 +47,16 @@ struct LauncherPreferences: Codable {
 }
 
 @MainActor final class LauncherStore: ObservableObject {
+    @Published var homepageNodes: [HomepageNode] = []
+    @Published var homepageLoading = false
+    @Published var homepageError: String?
+    var homepageTask: Task<Void, Never>?
     @Published var settingsTab = "启动"
     @Published var globalSettings = GlobalLauncherSettings.load() {
-        didSet { globalSettings.save(); applyPersonalization() }
+        didSet {
+            globalSettings.save(); applyPersonalization()
+            if oldValue.homeMode != globalSettings.homeMode || oldValue.homeURL != globalSettings.homeURL || oldValue.homePreset != globalSettings.homePreset { refreshHomepage() }
+        }
     }
     var loadedBackgroundPath = ""
     @Published var backgroundImage: NSImage?
@@ -162,6 +169,7 @@ struct LauncherPreferences: Codable {
 
     func start() async {
         applyPersonalization()
+        refreshHomepage()
         if globalSettings.musicAuto && !globalSettings.musicPath.isEmpty { playMusic() }
         await refreshLocal()
         if !didRestoreOfflineLogin {

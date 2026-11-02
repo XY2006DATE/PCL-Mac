@@ -2,7 +2,7 @@ import AppKit
 import SwiftUI
 
 extension Color {
-    static let pclBlue = ClassicTheme.blue
+    static var pclBlue: Color { ClassicTheme.blue }
 }
 
 struct PCLCard<Content: View>: View {

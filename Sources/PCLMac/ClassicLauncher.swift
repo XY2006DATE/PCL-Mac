@@ -3,12 +3,10 @@ import PCLCore
 import SwiftUI
 
 enum ClassicTheme {
-    static let blue = Color(red: 0.08, green: 0.46, blue: 0.81)
+    static var blue: Color { ThemePalette.blue }
     static let text = Color(red: 0.35, green: 0.37, blue: 0.39)
     static let panel = Color(red: 0.993, green: 0.993, blue: 1)
-    static let background = LinearGradient(
-        colors: [Color(red: 0.85, green: 0.89, blue: 0.97), Color(red: 0.80, green: 0.93, blue: 0.96)],
-        startPoint: .bottomLeading, endPoint: .topTrailing)
+    static var background: LinearGradient { ThemePalette.background }
 }
 
 struct ClassicHeader: View {
@@ -38,7 +36,7 @@ struct ClassicHeader: View {
             }
         }
         .frame(height: Self.height)
-        .background(LinearGradient(colors: [Color(red: 0.06, green: 0.43, blue: 0.77), ClassicTheme.blue], startPoint: .leading, endPoint: .trailing))
+        .background(ThemePalette.header)
     }
 
     private var hasInnerTitle: Bool {

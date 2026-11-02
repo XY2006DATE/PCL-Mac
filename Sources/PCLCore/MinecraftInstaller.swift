@@ -75,15 +75,15 @@ private struct InstallAssetIndex: Decodable {
 public actor MinecraftInstaller {
     private let session: URLSession
     private let manifestURL: URL
-    private let maxConcurrentDownloads: Int
+    private let maxConcurrentDownloads: Int?
     private var isInstalling = false
     public static let officialManifestURL = URL(string: "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json")!
     static let officialManifestFallbackURL = URL(string: "https://launchermeta.mojang.com/mc/game/version_manifest_v2.json")!
 
     public init(session: URLSession = .shared, manifestURL: URL = MinecraftInstaller.officialManifestURL,
-                maxConcurrentDownloads: Int = 12) {
+                maxConcurrentDownloads: Int? = nil) {
         self.session = session; self.manifestURL = manifestURL
-        self.maxConcurrentDownloads = min(24, max(1, maxConcurrentDownloads))
+        self.maxConcurrentDownloads = maxConcurrentDownloads.map { min(256, max(1, $0)) }
     }
 
     public func fetchManifest() async throws -> VersionManifest {
@@ -228,7 +228,7 @@ public actor MinecraftInstaller {
                         }
                     }
                 }
-                for _ in 0..<min(maxConcurrentDownloads, artifacts.count) {
+                for _ in 0..<min(maxConcurrentDownloads ?? DownloadPolicy.shared.maximumConcurrent, artifacts.count) {
                     if let item = iterator.next() { add(item) }
                 }
                 while let (filename, support) = try await group.next() {

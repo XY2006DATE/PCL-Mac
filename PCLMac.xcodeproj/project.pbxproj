@@ -33,6 +33,7 @@
 		87590CA22A5D83AA6BE9711C /* PCLCore in Frameworks */ = {isa = PBXBuildFile; productRef = A4942103020F6C47F212991A /* PCLCore */; };
 		8B70A16F717C4D1D9AF871FB /* ModdedInstallStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E9AF0C8BE8CB8637525F2E5 /* ModdedInstallStore.swift */; };
 		8F18DE91CEDF970D744B1343 /* RedstoneLampOff.png in Resources */ = {isa = PBXBuildFile; fileRef = 582813FF286460A67A600BA2 /* RedstoneLampOff.png */; };
+		907384C2B4B06CD927B18456 /* CustomHomepageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1A7DE5F773130729043DBE5 /* CustomHomepageView.swift */; };
 		9658A6CBCE5C4A4191CC8827 /* InstanceNavigation.swift in Sources */ = {isa = PBXBuildFile; fileRef = C6EF08F1BA0A1684719CC9B0 /* InstanceNavigation.swift */; };
 		9EF8FB9E54F873EA2B0904EB /* VersionModView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08FF97595060CCD5B1F54942 /* VersionModView.swift */; };
 		9F87ABB58295CD7D1F39113B /* LauncherView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58287D2DAF09D990C85F8242 /* LauncherView.swift */; };
@@ -44,6 +45,7 @@
 		C3D55FFBEE8E8246D60508FE /* SourceIcons in Resources */ = {isa = PBXBuildFile; fileRef = 8F75261DE06B8E6FC494DDFA /* SourceIcons */; };
 		CA3B08D4F56E796ACC5606DF /* CommandBlock.png in Resources */ = {isa = PBXBuildFile; fileRef = C0D871E88826D7F522CA2CAD /* CommandBlock.png */; };
 		CF0022AA999197A23F9AAC5B /* PCLControls.swift in Sources */ = {isa = PBXBuildFile; fileRef = 111E1265C2011BCA11082995 /* PCLControls.swift */; };
+		D3CAB850738AD2F81D18CD52 /* ThemePalette.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002CD5202329EDCC484DC752 /* ThemePalette.swift */; };
 		DAC8584FD46E21297E2AFBDB /* HerobrineXia.png in Resources */ = {isa = PBXBuildFile; fileRef = 2C1E15D53A646F0A06E9ED15 /* HerobrineXia.png */; };
 		E6AFFFB7131CA184C0FA0A5C /* AppIcon.icns in Resources */ = {isa = PBXBuildFile; fileRef = 9B63D61BCF23B6B42C133A01 /* AppIcon.icns */; };
 		E9338EB69FD545C47C4B6A79 /* LauncherStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48F106AA5F8A2E5E48DF9EEB /* LauncherStore.swift */; };
@@ -60,6 +62,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		002CD5202329EDCC484DC752 /* ThemePalette.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemePalette.swift; sourceTree = "<group>"; };
 		03C62B881F964865CB5F969F /* Skins */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Skins; path = Resources/Skins; sourceTree = SOURCE_ROOT; };
 		08FF97595060CCD5B1F54942 /* VersionModView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VersionModView.swift; sourceTree = "<group>"; };
 		111E1265C2011BCA11082995 /* PCLControls.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PCLControls.swift; sourceTree = "<group>"; };
@@ -97,6 +100,7 @@
 		9388C4F8F71DC9D30B964209 /* Logo.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = Logo.png; sourceTree = "<group>"; };
 		97D9963816292185E8402730 /* InstallProgressViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstallProgressViews.swift; sourceTree = "<group>"; };
 		9B63D61BCF23B6B42C133A01 /* AppIcon.icns */ = {isa = PBXFileReference; lastKnownFileType = image.icns; path = AppIcon.icns; sourceTree = "<group>"; };
+		A1A7DE5F773130729043DBE5 /* CustomHomepageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomHomepageView.swift; sourceTree = "<group>"; };
 		B1A2DBECFFF9B240BB3B426F /* PCLResources.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PCLResources.swift; sourceTree = "<group>"; };
 		B586E5672ACE287702E48536 /* GlobalSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlobalSettingsView.swift; sourceTree = "<group>"; };
 		B6CBD3288507C6F933D7490B /* DownloadLibraryViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadLibraryViews.swift; sourceTree = "<group>"; };
@@ -139,6 +143,7 @@
 				487734C39F4833F4691037BA /* ClassicLauncher.swift */,
 				87B7FC9C25E828C94571FF4D /* CommunityResourceStore.swift */,
 				524C3E6F3DBEE709B2A8BD5F /* CommunityResourceViews.swift */,
+				A1A7DE5F773130729043DBE5 /* CustomHomepageView.swift */,
 				B6CBD3288507C6F933D7490B /* DownloadLibraryViews.swift */,
 				B586E5672ACE287702E48536 /* GlobalSettingsView.swift */,
 				97D9963816292185E8402730 /* InstallProgressViews.swift */,
@@ -151,6 +156,7 @@
 				14E9C1AEC56652D249A094EB /* PCLMacApp.swift */,
 				B1A2DBECFFF9B240BB3B426F /* PCLResources.swift */,
 				E73016E447A040B2165562FE /* PCLSourceIcons.swift */,
+				002CD5202329EDCC484DC752 /* ThemePalette.swift */,
 				29BDF24CA90BD2E59768B280 /* VersionExportStore.swift */,
 				86D70ADCA3CE4A6DF4077849 /* VersionExportView.swift */,
 				C6CA8ADC0E33279426DD523D /* VersionModifyStore.swift */,
@@ -317,6 +323,7 @@
 				82ECF825245B2E0D7E2C7618 /* ClassicLauncher.swift in Sources */,
 				B066F60B5F87210695A6E830 /* CommunityResourceStore.swift in Sources */,
 				FFF12DCF3A6872653F73AE0E /* CommunityResourceViews.swift in Sources */,
+				907384C2B4B06CD927B18456 /* CustomHomepageView.swift in Sources */,
 				809812D25DB10A95C4BC4075 /* DownloadLibraryViews.swift in Sources */,
 				02FDA139F5FF7060EBAFFE67 /* GlobalSettingsView.swift in Sources */,
 				F9461BC175E3332353ADB2CE /* InstallProgressViews.swift in Sources */,
@@ -329,6 +336,7 @@
 				151D7FD6DF224A718F9FB101 /* PCLMacApp.swift in Sources */,
 				7EB335F8961EABD018E69587 /* PCLResources.swift in Sources */,
 				7EAADCFEA19D82C7C90BAB79 /* PCLSourceIcons.swift in Sources */,
+				D3CAB850738AD2F81D18CD52 /* ThemePalette.swift in Sources */,
 				17B0C43A6EB514CC48573139 /* VersionExportStore.swift in Sources */,
 				39A3C8099928C12734180B57 /* VersionExportView.swift in Sources */,
 				729C64A5FC53C06443C693C9 /* VersionModStore.swift in Sources */,

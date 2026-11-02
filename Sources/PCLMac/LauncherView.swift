@@ -25,6 +25,7 @@ struct LauncherView: View {
                                 .blur(radius: store.globalSettings.backgroundBlur)
                                 .opacity(store.globalSettings.backgroundOpacity)
                         }
+                        if store.page == .launch && store.globalSettings.homeMode != "blank" { CustomHomepageView() }
                         if store.page != .launch {
                             ScrollView {
                                 VStack(alignment: .leading, spacing: store.page == .versionSettings ? 15 : 22) {

@@ -17,6 +17,8 @@ public enum PCLHTTPS {
 
     public static func download(for request: URLRequest, session: URLSession = .shared) async throws -> (URL, URLResponse) {
         try validateHTTPS(request)
+        try await DownloadPolicy.shared.acquire()
+        defer { DownloadPolicy.shared.release() }
         do { return try await downloadAttempt(request, session: session) }
         catch let error as URLError where error.code == .secureConnectionFailed {
             try Task.checkCancellation()
@@ -27,15 +29,23 @@ public enum PCLHTTPS {
     }
 
     private static func downloadAttempt(_ request: URLRequest, session: URLSession) async throws -> (URL, URLResponse) {
-        guard let monitor = InstallProgressContext.current else { return try await session.download(for: request) }
-        let transport = monitor.downloadTransport(copying: session)
-        monitor.networkTransferStarted()
-        defer { monitor.networkTransferFinished() }
+        let monitor = InstallProgressContext.current
+        let transport = monitor?.downloadTransport(copying: session) ?? InstallDownloadTelemetryDelegate(copying: session)
+        defer { if monitor == nil { transport.finishTasksAndInvalidate() } }
+        monitor?.networkTransferStarted()
+        defer { monitor?.networkTransferFinished() }
         let cancellation = InstallDownloadCancellation()
         return try await withTaskCancellationHandler {
             try Task.checkCancellation()
-            return try await withCheckedThrowingContinuation { continuation in
+            let result: (URL, URLResponse) = try await withCheckedThrowingContinuation { continuation in
                 transport.start(request, cancellation: cancellation, continuation: continuation)
+            }
+            do {
+                try await DownloadPolicy.wait(until: cancellation.deadline)
+                return result
+            } catch {
+                try? FileManager.default.removeItem(at: result.0)
+                throw error
             }
         } onCancel: { cancellation.cancel() }
     }
@@ -67,7 +77,7 @@ final class InstallDownloadTelemetryDelegate: NSObject, URLSessionDownloadDelega
         self.monitor = monitor; self.original = original; self.sourceSession = nil
     }
 
-    init(monitor: InstallTaskMonitor, copying originalSession: URLSession) {
+    init(monitor: InstallTaskMonitor? = nil, copying originalSession: URLSession) {
         self.monitor = monitor; self.original = originalSession.delegate
         self.sourceSession = originalSession
         super.init()
@@ -84,7 +94,7 @@ final class InstallDownloadTelemetryDelegate: NSObject, URLSessionDownloadDelega
         }
         let task = session.downloadTask(with: request)
         stateLock.lock()
-        tasks[task.taskIdentifier] = DownloadState(continuation: continuation)
+        tasks[task.taskIdentifier] = DownloadState(continuation: continuation, cancellation: cancellation)
         stateLock.unlock()
         cancellation.attach(task)
         task.resume()
@@ -102,6 +112,17 @@ final class InstallDownloadTelemetryDelegate: NSObject, URLSessionDownloadDelega
     func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask,
                     didWriteData bytesWritten: Int64, totalBytesWritten: Int64, totalBytesExpectedToWrite: Int64) {
         monitor?.recordDownloadedBytes(bytesWritten)
+        let deadline = DownloadPolicy.shared.reserve(bytes: bytesWritten)
+        stateLock.lock()
+        tasks[downloadTask.taskIdentifier]?.cancellation.setDeadline(deadline)
+        stateLock.unlock()
+        if deadline > ProcessInfo.processInfo.systemUptime {
+            downloadTask.suspend()
+            Task {
+                try? await DownloadPolicy.wait(until: deadline)
+                downloadTask.resume()
+            }
+        }
         (original as? URLSessionDownloadDelegate)?.urlSession?(session, downloadTask: downloadTask,
             didWriteData: bytesWritten, totalBytesWritten: totalBytesWritten, totalBytesExpectedToWrite: totalBytesExpectedToWrite)
     }
@@ -150,6 +171,7 @@ final class InstallDownloadTelemetryDelegate: NSObject, URLSessionDownloadDelega
 
     private struct DownloadState {
         let continuation: CheckedContinuation<(URL, URLResponse), Error>
+        let cancellation: InstallDownloadCancellation
         var file: URL?
         var error: Error?
     }
@@ -178,6 +200,9 @@ final class InstallDownloadCancellation: @unchecked Sendable {
     private let lock = NSLock()
     private var task: URLSessionTask?
     private var cancelled = false
+    private var transferDeadline = 0.0
+    var deadline: Double { lock.withLock { transferDeadline } }
+    func setDeadline(_ deadline: Double) { lock.withLock { transferDeadline = deadline } }
 
     func attach(_ task: URLSessionTask) {
         lock.lock()

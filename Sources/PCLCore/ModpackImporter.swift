@@ -930,7 +930,7 @@ public actor ModpackImporter {
                         return try await download(file, into: root, reuse: reuse, cache: cache, session: session)
                     }
                 }
-                for _ in 0..<min(6, files.count) { if let file = iterator.next() { add(file) } }
+                for _ in 0..<min(DownloadPolicy.shared.maximumConcurrent, files.count) { if let file = iterator.next() { add(file) } }
                 while let reused = try await group.next() {
                     try Task.checkCancellation()
                     completed += 1; if reused { reusedCount += 1 }

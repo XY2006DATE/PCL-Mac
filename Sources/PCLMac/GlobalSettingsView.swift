@@ -24,6 +24,9 @@ private struct SettingsBackup: Codable {
 
 @MainActor extension LauncherStore {
     func applyPersonalization() {
+        DownloadPolicy.shared.configure(maximumConcurrent: globalSettings.downloadThreads,
+                                        bytesPerSecond: DownloadPolicy.speedBytes(slider: globalSettings.downloadSpeed))
+        ThemePalette.apply(globalSettings)
         for window in NSApp.windows where window.title == "PCL Mac版" {
             window.alphaValue = globalSettings.opacity
         }
@@ -151,12 +154,32 @@ struct GlobalSettingsView: View {
 
         }
     }
+    private func themeChoices(_ choices: [Int]) -> some View {
+        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), alignment: .leading), count: 5), alignment: .leading, spacing: 12) {
+            ForEach(choices, id: \.self) { index in
+                Button { store.globalSettings.theme = index } label: {
+                    HStack(spacing: 5) {
+                        PCLIcon(store.globalSettings.theme == index ? "CircleFilled" : "Circle").frame(width: 13, height: 13)
+                        Text(ThemePalette.names[index]).fixedSize()
+                    }.foregroundStyle(store.globalSettings.theme == index ? ClassicTheme.blue : ClassicTheme.text)
+                }.buttonStyle(.plain).accessibilityLabel(ThemePalette.names[index]).accessibilityValue(store.globalSettings.theme == index ? "已选择" : "未选择")
+            }
+        }
+    }
     private var personalization: some View {
         Group {
             PCLCard(title: "基础") {
                 VStack(spacing: 15) {
                     row("不透明度") { Slider(value: $store.globalSettings.opacity, in: 0.4...1) }
-                    row("主题") { Text("龙猫蓝").foregroundStyle(ClassicTheme.blue) }
+                    row("主题") { themeChoices([0, 1, 2, 3, 4]) }
+                    row("隐藏主题") { themeChoices([5, 12, 6, 7, 13, 8, 9, 10, 11, 14]) }
+                    Text("遵循原项目开源分支：主题检查直接通过。官方赞助解锁码校验未公开，本版不生成或验证官方解锁码。")
+                        .font(.custom("PCL English", size: 11)).foregroundStyle(.secondary)
+                    if store.globalSettings.theme == 14 {
+                        row("色调") { Slider(value: $store.globalSettings.themeHue, in: 0...360) }
+                        row("饱和度") { Slider(value: $store.globalSettings.themeSaturation, in: 0...1) }
+                        row("亮度") { Slider(value: $store.globalSettings.themeBrightness, in: 0.2...1) }
+                    }
                     Link("支持 PCL 开发！", destination: URL(string: "https://meloong.com/afd/a/LTCat")!).buttonStyle(PCLActionStyle())
                 }
             }
@@ -185,7 +208,31 @@ struct GlobalSettingsView: View {
                 }.toggleStyle(.checkbox)
             }
             PCLCard(title: "标题栏") { row("标题栏文本") { TextField("PCL", text: $store.globalSettings.title).textFieldStyle(.roundedBorder) } }
-            PCLCard(title: "主页") { Text("当前使用空白主页。原版 XAML 自定义主页、联网主页与功能隐藏尚未移植。 ").foregroundStyle(.secondary) }
+            PCLCard(title: "主页") {
+                VStack(alignment: .leading, spacing: 15) {
+                    row("主页内容") { select("主页内容", $store.globalSettings.homeMode, [("空白", "blank"), ("预设", "preset"), ("读取本地文件", "local"), ("联网更新", "network")]) }
+                    if store.globalSettings.homeMode == "preset" {
+                        row("主页预设") {
+                            PCLComboBox(title: "主页预设", selection: $store.globalSettings.homePreset,
+                                        options: HomepagePresets.all.enumerated().map { .init(title: $0.element.title, value: $0.offset) }).frame(height: 28)
+                        }
+                    }
+                    if store.globalSettings.homeMode == "network" {
+                        row("下载地址") { TextField("https://", text: $store.globalSettings.homeURL).textFieldStyle(.roundedBorder) }
+                    }
+                    if store.globalSettings.homeMode == "local" {
+                        Text("从应用支持目录的 Homepage/Custom.xaml 读取主页。支持常用原版卡片、文字、图片和按钮；复杂 WPF 控件会提示不支持。")
+                            .foregroundStyle(.secondary)
+                    }
+                    HStack {
+                        Button("刷新主页") { store.refreshHomepage() }
+                        Button("生成教学文件") { store.generateHomepageTutorial() }
+                        Button("打开主页文件夹") { store.openHomepageFolder() }
+                    }.buttonStyle(PCLActionStyle())
+                    Text("请谨慎使用陌生人提供的主页。联网主页可能加载外部图片，按钮操作仅在点击后执行。")
+                        .font(.custom("PCL English", size: 11)).foregroundStyle(.secondary)
+                }
+            }
         }
     }
     private var other: some View {
@@ -196,7 +243,20 @@ struct GlobalSettingsView: View {
                         HStack { Text(store.preferences.gamePath).lineLimit(2).textSelection(.enabled); Spacer(); Button("更改") { store.chooseGameDirectory() }.disabled(store.isBusy || store.isGameRunning) }
                     }
                     row("版本列表") { Toggle("显示测试版", isOn: $store.preferences.showSnapshots).toggleStyle(.checkbox) }
-                    Text("下载器自动尝试官方源及已实现的镜像候选，并验证文件哈希。手动源优先级、线程数和速度限制尚未移植。")
+                    row("最大线程数") {
+                        HStack {
+                            Slider(value: Binding(get: { Double(store.globalSettings.downloadThreads) }, set: { store.globalSettings.downloadThreads = Int($0) }), in: 1...256, step: 1)
+                            Text("\(store.globalSettings.downloadThreads)").monospacedDigit().frame(width: 40)
+                        }
+                    }
+                    row("速度限制") {
+                        HStack {
+                            Slider(value: Binding(get: { Double(store.globalSettings.downloadSpeed) }, set: { store.globalSettings.downloadSpeed = Int($0) }), in: 0...42, step: 1)
+                            let bytes = DownloadPolicy.speedBytes(slider: store.globalSettings.downloadSpeed)
+                            Text(bytes == 0 ? "无限制" : String(format: "%.1f M/s", Double(bytes) / 1_048_576)).monospacedDigit().frame(width: 85)
+                        }
+                    }
+                    Text("线程数为所有文件下载共享的并发上限；速度限制为合计下载速度，缓存复制不计入网络流量。官方源及镜像候选仍按下载器规则选择。")
                         .foregroundStyle(.secondary)
                 }
             }

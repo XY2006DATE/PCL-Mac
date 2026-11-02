@@ -31,3 +31,11 @@ Individual third-party images, logos, skins and Font.ttf may have separate
 rights and terms that require checking before redistribution. This notice
 records provenance; it does not grant permissions or assert authorization
 to relicense any third-party resource.
+
+EasyTier runtime (downloaded separately on first multiplayer use)
+- Project: https://github.com/EasyTier/EasyTier
+- Pinned release: v2.6.4
+- License: LGPL-3.0; see https://github.com/EasyTier/EasyTier/blob/v2.6.4/LICENSE
+- Source for the matching release: https://github.com/EasyTier/EasyTier/tree/v2.6.4
+- Official macOS binaries are downloaded unchanged, verified with a pinned SHA-256, and run as separate processes. They are not included in this repository or the app bundle.
+- The PCLLinkSupervisor helper is source code in Support/Multiplayer/PCLLinkSupervisor.c.

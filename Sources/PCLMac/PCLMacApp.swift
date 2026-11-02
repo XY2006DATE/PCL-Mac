@@ -50,10 +50,10 @@ import SwiftUI
             alert.runModal()
             return .terminateCancel
         }
-        if store?.isGameRunning == true || store?.installingID != nil || store?.versionExportState.isExporting == true || store?.versionModState.mutating == true {
+        if store?.multiplayerState.isActive == true || store?.isGameRunning == true || store?.installingID != nil || store?.versionExportState.isExporting == true || store?.versionModState.mutating == true {
             let alert = NSAlert()
             alert.messageText = "结束当前任务并退出？"
-            alert.informativeText = "退出将停止运行中的游戏并取消下载。已完成的下载文件会保留。"
+            alert.informativeText = "退出将停止运行中的游戏、关闭联机房间并取消下载。已完成的下载文件会保留。"
             alert.addButton(withTitle: "停止并退出")
             alert.addButton(withTitle: "取消")
             if alert.runModal() != .alertFirstButtonReturn { return .terminateCancel }

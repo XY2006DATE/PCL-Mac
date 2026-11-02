@@ -1,0 +1,10 @@
+EasyTier 2.6.4
+Project: https://github.com/EasyTier/EasyTier
+Matching source: https://github.com/EasyTier/EasyTier/tree/v2.6.4
+License: GNU Lesser General Public License version 3
+License text: https://github.com/EasyTier/EasyTier/blob/v2.6.4/LICENSE
+
+Official EasyTier runtime executables are downloaded separately on first use,
+verified with pinned SHA-256 values, and run unchanged as separate processes.
+They are not linked into this application or included in the app bundle.
+The bundled PCLLinkSupervisor helper source is in Support/Multiplayer/.

@@ -46,6 +46,8 @@ enum PCLSourceIcons {
         "ModDisabled",
         "Modpack",
         "Online",
+        "RoomCreate",
+        "RoomJoin",
         "OpenFile",
         "PageFirst",
         "PageLast",

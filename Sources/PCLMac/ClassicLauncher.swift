@@ -30,6 +30,7 @@ struct ClassicHeader: View {
                 HStack(spacing: 12.5) {
                     tab("启动", icon: .launch, selected: store.page == .launch) { store.page = .launch }
                     tab("下载", icon: .download, selected: store.page == .downloads) { store.page = .downloads }
+                    tab("联机", icon: .online, selected: store.page == .multiplayer) { store.page = .multiplayer }
                     tab("设置", icon: .settings, selected: store.page == .settings) { store.page = .settings }
                     tab("更多", icon: .more, selected: store.page == .activity || store.page == .about) { store.page = .about }
                 }
@@ -79,9 +80,9 @@ struct ClassicHeader: View {
 /// FormMain's filled geometries, with MyRadioButton's original per-icon scale.
 /// The 20-point box is its 16-point source box at this launcher's 1.25 UI scale.
 private enum ClassicTopNavigationIcon: String, CaseIterable {
-    case launch = "Launch", download = "Download", settings = "Settings", more = "More"
+    case launch = "Launch", download = "Download", online = "Online", settings = "Settings", more = "More"
     var logoScale: CGFloat {
-        switch self { case .launch, .download: return 0.9; case .settings: return 1.1; case .more: return 0.93 }
+        switch self { case .launch, .download: return 0.9; case .settings: return 1.1; case .more: return 0.93; case .online: return 1.05 }
     }
     private static let templates: [String: NSImage] = {
         var result: [String: NSImage] = [:]
@@ -95,7 +96,7 @@ private enum ClassicTopNavigationIcon: String, CaseIterable {
         return result
     }()
     @ViewBuilder var image: some View {
-        if let template = Self.templates[rawValue] { Image(nsImage: template).resizable().renderingMode(.template).scaledToFit() }
+        if let template = Self.templates[rawValue] ?? (self == .online ? PCLSourceIcons.image("Online") : nil) { Image(nsImage: template).resizable().renderingMode(.template).scaledToFit() }
         else { Color.clear }
     }
 }
@@ -226,9 +227,12 @@ struct ClassicSectionSidebar: View {
                         row("数据包", icon: "Datapack", active: store.communityState.kind == .datapack) { store.openCommunity(.datapack) }
                         row("资源包", icon: "Resourcepack", active: store.communityState.kind == .resourcepack) { store.openCommunity(.resourcepack) }
                         row("光影包", icon: "Shader", active: store.communityState.kind == .shader) { store.openCommunity(.shader) }
+                    case .multiplayer:
+                        row("联机", icon: "Online", active: true) {}
+                        row("联机设置", icon: "SetupOther") { store.settingsTab = "联机"; store.page = .settings }
                     case .settings:
                         row("启动", icon: "SetupLaunch", active: store.settingsTab == "启动") { store.settingsTab = "启动" }
-                        row("联机", icon: "Online") {}.disabled(true)
+                        row("联机", icon: "Online", active: store.settingsTab == "联机") { store.settingsTab = "联机" }
                         row("个性化", icon: "Personalize", active: store.settingsTab == "个性化") { store.settingsTab = "个性化" }
                         row("其他", icon: "SetupOther", active: store.settingsTab == "其他") { store.settingsTab = "其他" }
                     default:

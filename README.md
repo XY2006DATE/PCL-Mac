@@ -64,7 +64,7 @@ python3 scripts/make-version-action-icons.py --check
 
 ## 已知限制
 
-尚未实现 Microsoft / Xbox 正版登录、PCL 联机、Java 自动安装或 Mod 联网自动更新。离线身份不能连接要求正版验证的服务器。旧游戏版本可能需要 Intel Java 与 Rosetta，并非所有版本、加载器或整合包都已在 macOS 上验证。
+尚未实现 Microsoft / Xbox 正版登录、Java 自动安装或 Mod 联网自动更新。联机暂不支持 PCL 官方节点编号或 CE 的 Scaffolding 房间码。离线身份不能连接要求正版验证的服务器。旧游戏版本可能需要 Intel Java 与 Rosetta，并非所有版本、加载器或整合包都已在 macOS 上验证。
 
 暂不支持 ZIP64、加密或分卷 ZIP、MultiMC 自定义补丁与外部启动命令。完整 ZIP 仅包含所选实例当前 macOS 运行所需文件。Windows 专属选项及尚未移植的功能保持禁用。
 
@@ -87,3 +87,23 @@ python3 scripts/make-version-action-icons.py --check
 主题恢复原版基础／隐藏分组和自定义色调、饱和度及亮度，顶部、背景、按钮和下拉框联动。颜色转换移植 `ModBase.MyColor.FromHSL2`。主题可用性沿用开源 `ModSecret.ThemeCheckOne` 直接通过的行为；正式版主题与赞助解锁的加密校验已从公开源码移除，Mac 版不验证或生成官方解锁码。非默认主题配色使用本地色调配置，不声称复刻未公开的主题配置和动画。
 
 下载线程为跨原版、加载器、Mod 和整合包的文件传输并发上限（1–256，默认 64）。速度滑块沿用原版的 0.1–1.5、2–10、11–20 M/s 及不限速刻度，作用于所有文件下载的合计流量；已校验文件复用不消耗下载预算。元数据和主页请求不受文件下载限速影响。修改参数不会删除缓存或改变文件校验规则。
+
+## Mac / Windows 联机（第一阶段）
+
+联机按原版 PCL 的公开 v02 协议实现，使用 EasyTier 2.6.4、chacha20、固定房主虚拟 IP 和本机端口转发，无需创建系统虚拟网卡或管理员权限。首次使用从 EasyTier 官方 Release 下载对应 CPU 的模块并核对固定 SHA-256，后续校验并复用缓存。模块由独立进程管理器随启动器退出而停止，不安装后台服务。
+
+1. 双方在“设置 → 联机 → 自定义节点”填写至少一个共同且允许外部网络发现／中继的 EasyTier 节点，例如 `tcp://你的节点:11010`。Windows 端应使用原版 PCL 的同名设置。
+2. 房主进入相同游戏／整合包版本，选择“对局域网开放”，将游戏提示的端口填入 Mac 版“联机 → 创建房间”；也可由 Windows 原版 PCL 创建。
+3. 将结尾为 `02000` 的邀请码发给朋友，在另一端加入。Mac 加入后会广播本机转发房间，也可复制界面中的 `127.0.0.1:端口` 直接连接。
+4. 关闭房间、离开房间或退出启动器会停止本次联机。邀请码只保存在当前房间内存与权限为 0600 的临时配置中，日志隐藏邀请码和密钥。
+
+这是自定义节点模式，不调用 PCL 未公开的官方节点配置接口。CE 的 Scaffolding 使用另一套协议，后续单独实现。离线用户名、模组和游戏版本仍需匹配房主的设置；不会修改服务器的正版验证选项。
+
+验证覆盖邀请码、配置约束、节点地址校验、凭据隐藏、取消与端口分配，以及真实 EasyTier 双实例经本地共享节点发现房主并往返 TCP / UDP 数据。该测试证明本机隧道流程，不代表已完成 Mac / Windows 双机 Minecraft 游玩验收。
+
+可将已核对官方 SHA-256 的 `easytier-core`、`easytier-cli` 放在独立测试目录，并编译进程管理器后运行：
+
+```sh
+xcrun clang -O2 -Wall -Wextra Support/Multiplayer/PCLLinkSupervisor.c -o /path/to/test-runtime/PCLLinkSupervisor
+PCL_EASYTIER_TEST_DIR=/path/to/test-runtime swift test --filter MultiplayerIntegrationTests
+```

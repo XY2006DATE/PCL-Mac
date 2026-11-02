@@ -15,6 +15,7 @@
 		17B0C43A6EB514CC48573139 /* VersionExportStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29BDF24CA90BD2E59768B280 /* VersionExportStore.swift */; };
 		1A006762C95A2D85FFA40B09 /* GrassPath.png in Resources */ = {isa = PBXBuildFile; fileRef = 607F24AD4A5C19C0DB35717D /* GrassPath.png */; };
 		1B871812E6F8F88F7B4A8D33 /* LICENCE in Resources */ = {isa = PBXBuildFile; fileRef = 3AFBF62ED3B9C4B366FA7983 /* LICENCE */; };
+		1C889B61262DF81DDD25D651 /* EasyTier-LICENSE.txt in Resources */ = {isa = PBXBuildFile; fileRef = 328F08709DB535345394FD8E /* EasyTier-LICENSE.txt */; };
 		35C6410D4F9ED4D7D0E05043 /* Skins in Resources */ = {isa = PBXBuildFile; fileRef = 03C62B881F964865CB5F969F /* Skins */; };
 		373C71F69EE6D8030E564B82 /* VersionModifyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A37CF612A1D52F744171D6F /* VersionModifyView.swift */; };
 		39A3C8099928C12734180B57 /* VersionExportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86D70ADCA3CE4A6DF4077849 /* VersionExportView.swift */; };
@@ -32,6 +33,7 @@
 		82ECF825245B2E0D7E2C7618 /* ClassicLauncher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 487734C39F4833F4691037BA /* ClassicLauncher.swift */; };
 		87590CA22A5D83AA6BE9711C /* PCLCore in Frameworks */ = {isa = PBXBuildFile; productRef = A4942103020F6C47F212991A /* PCLCore */; };
 		8B70A16F717C4D1D9AF871FB /* ModdedInstallStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E9AF0C8BE8CB8637525F2E5 /* ModdedInstallStore.swift */; };
+		8DDB9DEF7AFCA6613EA47B1C /* EasyTier-Notice.txt in Resources */ = {isa = PBXBuildFile; fileRef = 2BF6661585C74BE72D16ECC3 /* EasyTier-Notice.txt */; };
 		8F18DE91CEDF970D744B1343 /* RedstoneLampOff.png in Resources */ = {isa = PBXBuildFile; fileRef = 582813FF286460A67A600BA2 /* RedstoneLampOff.png */; };
 		907384C2B4B06CD927B18456 /* CustomHomepageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1A7DE5F773130729043DBE5 /* CustomHomepageView.swift */; };
 		9658A6CBCE5C4A4191CC8827 /* InstanceNavigation.swift in Sources */ = {isa = PBXBuildFile; fileRef = C6EF08F1BA0A1684719CC9B0 /* InstanceNavigation.swift */; };
@@ -42,6 +44,7 @@
 		B19368F9496E458043969E24 /* Logo.png in Resources */ = {isa = PBXBuildFile; fileRef = 9388C4F8F71DC9D30B964209 /* Logo.png */; };
 		B6786CE9A956D2C9F2BBB67C /* LTCat.jpg in Resources */ = {isa = PBXBuildFile; fileRef = 6A892FF1FC31FED70BE0FC88 /* LTCat.jpg */; };
 		BE4C5FB8436D6E5DFEC1BA47 /* Egg.png in Resources */ = {isa = PBXBuildFile; fileRef = 1DF98CA046D89C8B10A1EEDD /* Egg.png */; };
+		C35BF4D5810B2DEA40E66636 /* MultiplayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C6CEC336B06E3660539E352C /* MultiplayerView.swift */; };
 		C3D55FFBEE8E8246D60508FE /* SourceIcons in Resources */ = {isa = PBXBuildFile; fileRef = 8F75261DE06B8E6FC494DDFA /* SourceIcons */; };
 		CA3B08D4F56E796ACC5606DF /* CommandBlock.png in Resources */ = {isa = PBXBuildFile; fileRef = C0D871E88826D7F522CA2CAD /* CommandBlock.png */; };
 		CF0022AA999197A23F9AAC5B /* PCLControls.swift in Sources */ = {isa = PBXBuildFile; fileRef = 111E1265C2011BCA11082995 /* PCLControls.swift */; };
@@ -73,8 +76,10 @@
 		227279B87BE6AD0F75902ED4 /* VersionSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VersionSettingsView.swift; sourceTree = "<group>"; };
 		290124DDCD602A68C66080B7 /* VersionSettingsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VersionSettingsStore.swift; sourceTree = "<group>"; };
 		29BDF24CA90BD2E59768B280 /* VersionExportStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VersionExportStore.swift; sourceTree = "<group>"; };
+		2BF6661585C74BE72D16ECC3 /* EasyTier-Notice.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "EasyTier-Notice.txt"; sourceTree = "<group>"; };
 		2C1E15D53A646F0A06E9ED15 /* HerobrineXia.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = HerobrineXia.png; sourceTree = "<group>"; };
 		326321AF5FBC4F088CADABE0 /* PCL-Mac */ = {isa = PBXFileReference; lastKnownFileType = folder; name = "PCL-Mac"; path = .; sourceTree = SOURCE_ROOT; };
+		328F08709DB535345394FD8E /* EasyTier-LICENSE.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "EasyTier-LICENSE.txt"; sourceTree = "<group>"; };
 		38017379527A5A5ED6CAB896 /* Fabric.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = Fabric.png; sourceTree = "<group>"; };
 		3AFBF62ED3B9C4B366FA7983 /* LICENCE */ = {isa = PBXFileReference; path = LICENCE; sourceTree = "<group>"; };
 		3E9AF0C8BE8CB8637525F2E5 /* ModdedInstallStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModdedInstallStore.swift; sourceTree = "<group>"; };
@@ -107,6 +112,7 @@
 		BFA991736970AAF5F3C2CC5B /* VersionRowActions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VersionRowActions.swift; sourceTree = "<group>"; };
 		C0D871E88826D7F522CA2CAD /* CommandBlock.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = CommandBlock.png; sourceTree = "<group>"; };
 		C6CA8ADC0E33279426DD523D /* VersionModifyStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VersionModifyStore.swift; sourceTree = "<group>"; };
+		C6CEC336B06E3660539E352C /* MultiplayerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MultiplayerView.swift; sourceTree = "<group>"; };
 		C6EF08F1BA0A1684719CC9B0 /* InstanceNavigation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstanceNavigation.swift; sourceTree = "<group>"; };
 		CB328FA5F310788BF29F91E1 /* VersionActions */ = {isa = PBXFileReference; lastKnownFileType = folder; name = VersionActions; path = Resources/VersionActions; sourceTree = SOURCE_ROOT; };
 		E48F314DFC5902D68FB0D2A0 /* Anvil.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = Anvil.png; sourceTree = "<group>"; };
@@ -151,6 +157,7 @@
 				48F106AA5F8A2E5E48DF9EEB /* LauncherStore.swift */,
 				58287D2DAF09D990C85F8242 /* LauncherView.swift */,
 				3E9AF0C8BE8CB8637525F2E5 /* ModdedInstallStore.swift */,
+				C6CEC336B06E3660539E352C /* MultiplayerView.swift */,
 				F6788752924320A9E7714317 /* PCLComboBox.swift */,
 				111E1265C2011BCA11082995 /* PCLControls.swift */,
 				14E9C1AEC56652D249A094EB /* PCLMacApp.swift */,
@@ -203,6 +210,8 @@
 				9B63D61BCF23B6B42C133A01 /* AppIcon.icns */,
 				67008C7A740D1EC0B3E1BCAF /* CobbleStone.png */,
 				C0D871E88826D7F522CA2CAD /* CommandBlock.png */,
+				328F08709DB535345394FD8E /* EasyTier-LICENSE.txt */,
+				2BF6661585C74BE72D16ECC3 /* EasyTier-Notice.txt */,
 				1DF98CA046D89C8B10A1EEDD /* Egg.png */,
 				38017379527A5A5ED6CAB896 /* Fabric.png */,
 				7E0F9DAAB2DFC3FC2F4F66F2 /* Font.ttf */,
@@ -231,6 +240,7 @@
 				5B31A2227C0E9F9D37EC8FB7 /* Sources */,
 				6AAFB8AB86E87B933B4626D5 /* Resources */,
 				7D515E4E742471050A904CDF /* Frameworks */,
+				161C2992354B701533BD2C7A /* Build Multiplayer Supervisor */,
 			);
 			buildRules = (
 			);
@@ -289,6 +299,8 @@
 				E6AFFFB7131CA184C0FA0A5C /* AppIcon.icns in Resources */,
 				F37B6E67A42B31FBFC857990 /* CobbleStone.png in Resources */,
 				CA3B08D4F56E796ACC5606DF /* CommandBlock.png in Resources */,
+				1C889B61262DF81DDD25D651 /* EasyTier-LICENSE.txt in Resources */,
+				8DDB9DEF7AFCA6613EA47B1C /* EasyTier-Notice.txt in Resources */,
 				BE4C5FB8436D6E5DFEC1BA47 /* Egg.png in Resources */,
 				7441BBD444776A0F2F3501EA /* Fabric.png in Resources */,
 				5E5D474FBA9EABA79AB94032 /* Font.ttf in Resources */,
@@ -315,6 +327,29 @@
 		};
 /* End PBXResourcesBuildPhase section */
 
+/* Begin PBXShellScriptBuildPhase section */
+		161C2992354B701533BD2C7A /* Build Multiplayer Supervisor */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"$(SRCROOT)/Support/Multiplayer/PCLLinkSupervisor.c",
+			);
+			name = "Build Multiplayer Supervisor";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(TARGET_BUILD_DIR)/$(CONTENTS_FOLDER_PATH)/Helpers/PCLLinkSupervisor",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "mkdir -p \"$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/Helpers\"\nxcrun clang -O2 -Wall -Wextra -arch arm64 -arch x86_64 -mmacosx-version-min=14.0 \"$SRCROOT/Support/Multiplayer/PCLLinkSupervisor.c\" -o \"$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/Helpers/PCLLinkSupervisor\"\ncodesign --force --sign - \"$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/Helpers/PCLLinkSupervisor\"\n";
+		};
+/* End PBXShellScriptBuildPhase section */
+
 /* Begin PBXSourcesBuildPhase section */
 		5B31A2227C0E9F9D37EC8FB7 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
@@ -331,6 +366,7 @@
 				E9338EB69FD545C47C4B6A79 /* LauncherStore.swift in Sources */,
 				9F87ABB58295CD7D1F39113B /* LauncherView.swift in Sources */,
 				8B70A16F717C4D1D9AF871FB /* ModdedInstallStore.swift in Sources */,
+				C35BF4D5810B2DEA40E66636 /* MultiplayerView.swift in Sources */,
 				78164D5A05975CFFC9659E4D /* PCLComboBox.swift in Sources */,
 				CF0022AA999197A23F9AAC5B /* PCLControls.swift in Sources */,
 				151D7FD6DF224A718F9FB101 /* PCLMacApp.swift in Sources */,

@@ -1123,6 +1123,38 @@
     "template": true,
     "resource": "CircleFilled.pdf"
   },
+  "RoomCreate": {
+    "source": "Plain Craft Launcher 2/Pages/PageLink/PageLinkMain.xaml",
+    "sourceSelector": "PanSelectCreate.Path.Data",
+    "sourceLine": 88,
+    "sourceGeometrySHA256": "5c57f79125bf5c8ccda30c4c285fdc27922b5992cc65a354abd72ef35b952b36",
+    "pdfSHA256": "4a39e9823a9bcb5be5ec33de1004d0ad337dbef4acfdd521f9bce653f3828f8a",
+    "geometryBounds": [
+      64.0,
+      64.0,
+      960.0,
+      960.0
+    ],
+    "fillRule": "evenOdd",
+    "template": true,
+    "resource": "RoomCreate.pdf"
+  },
+  "RoomJoin": {
+    "source": "Plain Craft Launcher 2/Pages/PageLink/PageLinkMain.xaml",
+    "sourceSelector": "PanSelectJoin.Path.Data",
+    "sourceLine": 113,
+    "sourceGeometrySHA256": "982d5114a73d00a68b5604fc6027142990fca75be9d21cade1f3b1732a5c0c77",
+    "pdfSHA256": "0295c8a93020b51c18bb6fee9d5221a7af6b95420b7deb0a14c6738da22f9a14",
+    "geometryBounds": [
+      0.0,
+      0.0,
+      698.3,
+      650.8
+    ],
+    "fillRule": "evenOdd",
+    "template": true,
+    "resource": "RoomJoin.pdf"
+  },
   "DefaultMod": {
     "source": "Plain Craft Launcher 2/Images/Icons/NoIcon.png",
     "sourceLine": 1,

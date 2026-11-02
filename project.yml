@@ -46,6 +46,16 @@ targets:
         buildPhase: resources
       - path: LICENCE
         buildPhase: resources
+    postBuildScripts:
+      - name: Build Multiplayer Supervisor
+        script: |
+          mkdir -p "$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/Helpers"
+          xcrun clang -O2 -Wall -Wextra -arch arm64 -arch x86_64 -mmacosx-version-min=14.0 "$SRCROOT/Support/Multiplayer/PCLLinkSupervisor.c" -o "$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/Helpers/PCLLinkSupervisor"
+          codesign --force --sign - "$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/Helpers/PCLLinkSupervisor"
+        inputFiles:
+          - $(SRCROOT)/Support/Multiplayer/PCLLinkSupervisor.c
+        outputFiles:
+          - $(TARGET_BUILD_DIR)/$(CONTENTS_FOLDER_PATH)/Helpers/PCLLinkSupervisor
     dependencies:
       - package: PCLCore
         product: PCLCore

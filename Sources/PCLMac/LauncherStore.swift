@@ -5,7 +5,7 @@ import Foundation
 import PCLCore
 
 enum LauncherPage: String, CaseIterable, Identifiable {
-    case launch = "开始游戏", library = "版本管理", downloads = "下载游戏", versionSettings = "版本设置", activity = "任务与日志", settings = "设置", about = "关于"
+    case launch = "开始游戏", library = "版本管理", downloads = "下载游戏", versionSettings = "版本设置", activity = "任务与日志", multiplayer = "联机", settings = "设置", about = "关于"
     var id: String { rawValue }
     var symbol: String {
         switch self {
@@ -14,6 +14,7 @@ enum LauncherPage: String, CaseIterable, Identifiable {
         case .downloads: return "arrow.down.circle"
         case .versionSettings: return "wrench.and.screwdriver"
         case .activity: return "text.alignleft"
+        case .multiplayer: return "network"
         case .settings: return "slider.horizontal.3"
         case .about: return "info.circle"
         }
@@ -25,6 +26,7 @@ enum LauncherPage: String, CaseIterable, Identifiable {
         case .downloads: return "从 Mojang 官方源获取原版游戏。"
         case .versionSettings: return "管理所选版本的显示与独立启动设置。"
         case .activity: return "下载进度与游戏输出，尽在此处。"
+        case .multiplayer: return "创建或加入原版 PCL 联机房间。"
         case .settings: return "让启动器适合你的使用习惯。"
         case .about: return "一份面向 macOS 的原生重构。"
         }
@@ -82,6 +84,7 @@ struct LauncherPreferences: Codable {
     @Published var showHiddenVersions = false
     @Published var versionSettingsTargetID: String?
     @Published var versionSettingsTab: VersionSettingsTab = .overview
+    let multiplayerState = MultiplayerState()
     let versionModState = VersionModState()
     let versionExportState = VersionExportState()
     let versionModifyState = VersionModifyState()
@@ -384,7 +387,7 @@ struct LauncherPreferences: Codable {
 
     func stopGame() { requestedGameStop = true; launcher.stop(); appendLog("已发送停止游戏请求。") }
 
-    func prepareToQuit() { installTask?.cancel(); cancelVersionExport(); launcher.stop() }
+    func prepareToQuit() { multiplayerState.stop(); installTask?.cancel(); cancelVersionExport(); launcher.stop() }
 
     func chooseGameDirectory() {
         guard !isBusy, !isGameRunning else { return }

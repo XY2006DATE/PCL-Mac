@@ -14,7 +14,7 @@ struct LauncherView: View {
                         if store.page == .launch { ClassicLaunchPanel() }
                         else { ClassicSectionSidebar() }
                     }
-                    .frame(width: showsInstallProgress || store.page == .downloads || store.page == .versionSettings || store.page == .settings ? 200 : min(370, max(300, geometry.size.width * 0.342)))
+                    .frame(width: showsInstallProgress || store.page == .downloads || store.page == .versionSettings || store.page == .settings || store.page == .multiplayer ? 200 : min(370, max(300, geometry.size.width * 0.342)))
                     Rectangle().fill(Color.pclBlue.opacity(0.08)).frame(width: 1)
                     ZStack {
                         ClassicTheme.background
@@ -33,6 +33,7 @@ struct LauncherView: View {
                                     case .launch: EmptyView()
                                     case .library: PCLVersionLibraryPage()
                                     case .downloads: PCLDownloadsPage()
+                                    case .multiplayer: MultiplayerView(model: store.multiplayerState)
                                     case .activity: activityPage
                                     case .settings: GlobalSettingsView(launchBasics: AnyView(settingsPage))
                                     case .about: aboutPage
@@ -257,13 +258,14 @@ struct LauncherView: View {
                             if let license = Bundle.main.url(forResource: "LICENCE", withExtension: nil) { NSWorkspace.shared.open(license) }
                         }.buttonStyle(PCLActionStyle())
                         Link("原项目开源代码", destination: URL(string: "https://github.com/Meloong-Git/PCL")!).buttonStyle(PCLActionStyle())
+                        Link("EasyTier 源码与许可", destination: URL(string: "https://github.com/EasyTier/EasyTier/tree/v2.6.4")!).buttonStyle(PCLActionStyle())
                     }
                     Text("Minecraft 及相关商标属于各自权利人。本应用未与 Mojang 或 Microsoft 建立关联。")
                         .font(.custom("PCL English", size: 11)).foregroundStyle(.secondary).lineSpacing(4)
                 }
             }
             PCLCard(title: "功能说明", collapsible: true, expanded: false) {
-                Text("已提供原版游戏与 Forge、NeoForge、Fabric、Quilt 安装、本地整合包导入、补全文件、版本选择、Java 检测与离线启动。版本设置支持组件修改、Mod 管理、完整 ZIP 与 Modrinth 整合包导出。社区资源支持 Mod、整合包、数据包、资源包与光影包的搜索、筛选、版本详情和下载安装，可自动补全必需前置 Mod。微软正版授权与联机服务暂未接入。")
+                Text("已提供原版游戏与 Forge、NeoForge、Fabric、Quilt 安装、本地整合包导入、补全文件、版本选择、Java 检测与离线启动。版本设置支持组件修改、Mod 管理、完整 ZIP 与 Modrinth 整合包导出。社区资源支持 Mod、整合包、数据包、资源包与光影包的搜索、筛选、版本详情和下载安装，可自动补全必需前置 Mod。联机支持通过自定义节点创建和加入原版 PCL 02 房间。微软正版授权、PCL 官方节点及 CE 的 Scaffolding 房间暂未接入。")
                     .font(.custom("PCL English", size: 12)).foregroundStyle(.secondary).lineSpacing(5)
             }
         }

@@ -116,6 +116,7 @@ struct GlobalSettingsView: View {
     var body: some View {
         Group {
             switch store.settingsTab {
+            case "联机": MultiplayerSettingsView(model: store.multiplayerState)
             case "个性化": personalization
             case "其他": other
             default: launch

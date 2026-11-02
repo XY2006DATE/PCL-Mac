@@ -9,10 +9,11 @@
     <key>CFBundleName</key><string>PCL Mac版</string>
     <key>CFBundlePackageType</key><string>APPL</string>
     <key>CFBundleShortVersionString</key><string>0.2.1</string>
-    <key>CFBundleVersion</key><string>12</string>
+    <key>CFBundleVersion</key><string>13</string>
     <key>CFBundleIconFile</key><string>AppIcon</string>
     <key>LSMinimumSystemVersion</key><string>14.0</string>
     <key>NSHighResolutionCapable</key><true/>
     <key>NSPrincipalClass</key><string>NSApplication</string>
+    <key>NSLocalNetworkUsageDescription</key><string>连接 Minecraft 局域网游戏并发现本机联机房间。</string>
     <key>NSHumanReadableCopyright</key><string>原作者：龙腾猫跃。本应用为第三方独立 SwiftUI 重构，非官方 macOS 版本。</string>
 </dict></plist>

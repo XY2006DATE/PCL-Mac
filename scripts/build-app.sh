@@ -30,5 +30,9 @@ for resource in "$project_dir"/Resources/*(N); do
   [[ "${resource:t}" == "Info.plist" ]] && continue
   ditto "$resource" "$app_dir/Contents/Resources/${resource:t}"
 done
+mkdir -p "$app_dir/Contents/Helpers"
+xcrun clang -O2 -Wall -Wextra -arch arm64 -arch x86_64 -mmacosx-version-min=14.0 \
+  Support/Multiplayer/PCLLinkSupervisor.c -o "$app_dir/Contents/Helpers/PCLLinkSupervisor"
+codesign --force --sign - "$app_dir/Contents/Helpers/PCLLinkSupervisor"
 codesign --force --deep --sign - "$app_dir"
 print "App built: $app_dir"

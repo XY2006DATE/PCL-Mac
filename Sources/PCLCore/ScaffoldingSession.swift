@@ -7,6 +7,7 @@ public actor ScaffoldingSession {
     private var server: ScaffoldingServer?
     private var advertisement: LinkLANAdvertisement?
     private var monitor: Task<Void, Never>?
+    private var nodeMaintenance: Task<Void, Never>?
     private var folder: URL?
     private var generation = UUID()
     public init(directory: URL, supervisor: URL) { self.directory = directory; self.supervisor = supervisor }
@@ -25,8 +26,7 @@ public actor ScaffoldingSession {
         let name = String(playerName.trimmingCharacters(in: .whitespacesAndNewlines).prefix(64))
         let profile = ScaffoldingProfile(name: name.isEmpty ? "PCL Mac 玩家" : name, machine_id: machineID, vendor: "PCL Mac / EasyTier \(EasyTierRuntime.version)", kind: isHost ? "HOST" : nil)
         guard FileManager.default.isExecutableFile(atPath: supervisor.path) else { throw PCLLinkError.invalid("缺少联机进程管理模块，请使用完整应用构建。") }
-        let folder = directory.appendingPathComponent(UUID().uuidString, isDirectory: true)
-        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700]); self.folder = folder
+        let folder = try LinkSessionStorage.create(in: directory); self.folder = folder
         do {
             let text = Self.configuration(invite: invite, gamePort: gamePort, control: control, listener: listener, peers: nodes, latencyFirst: latencyFirst, machineID: machineID)
             let file = folder.appendingPathComponent("room.toml")
@@ -38,9 +38,10 @@ public actor ScaffoldingSession {
             }
             event(.progress(isHost ? "正在自动创建大厅……" : "正在自动发现房主并建立直连……"))
             let child = LinkProcess(); core = child
-            try child.start(executable: supervisor, arguments: [binaries.core.path, "--config-file", file.path, "--rpc-portal", "127.0.0.1:\(rpc)", "--rpc-portal-whitelist", "127.0.0.1/32", "--disable-env-parsing", "--console-log-level", "warn"]) { line in
+            try child.start(executable: supervisor, arguments: [binaries.core.path, "--config-file", file.path, "--rpc-portal", "127.0.0.1:\(rpc)", "--rpc-portal-whitelist", "127.0.0.1/32", "--disable-env-parsing"] + LinkRuntimeOptions.logging, workingDirectory: folder) { line in
                 event(.output(line.lowercased().contains("network_secret") ? "[联机凭据字段已隐藏]" : invite.redacting(line)))
             }
+            nodeMaintenance = Task { await LinkNodeMaintenance.run(cli: binaries.cli, rpc: rpc, peers: nodes, event: event) }
             let deadline = ProcessInfo.processInfo.systemUptime + 75
             var initial: [PCLLinkPeer] = [], target: PCLLinkPeer?
             while ProcessInfo.processInfo.systemUptime < deadline {
@@ -102,6 +103,7 @@ public actor ScaffoldingSession {
     }
     public func stop() {
         generation = UUID(); monitor?.cancel(); monitor = nil
+        nodeMaintenance?.cancel(); nodeMaintenance = nil
         advertisement?.stop(); advertisement = nil; server?.stop(); server = nil; core?.stop(); core = nil
         if let folder { try? FileManager.default.removeItem(at: folder) }; folder = nil
     }

@@ -126,15 +126,20 @@ final class LinkProcess: @unchecked Sendable {
     private var process: Process?
     private var cancelled = false
     private var buffer = Data()
+    private var logLimiter = LinkLogLimiter()
     private var output: (@Sendable (String) -> Void)?
     private var pipe: Pipe?
 
     var isRunning: Bool { lock.withLock { process?.isRunning == true } }
-    func start(executable: URL, arguments: [String], output: (@Sendable (String) -> Void)? = nil) throws {
+    func start(executable: URL, arguments: [String], workingDirectory: URL? = nil, output: (@Sendable (String) -> Void)? = nil) throws {
         let task = Process(), pipe = Pipe()
         task.executableURL = executable; task.arguments = arguments
+        task.currentDirectoryURL = workingDirectory
         task.standardOutput = pipe; task.standardError = pipe
         task.standardInput = FileHandle.nullDevice
+        // Runtime filters must not inherit an unrelated shell debug setting.
+        var environment = ProcessInfo.processInfo.environment
+        environment.removeValue(forKey: "RUST_LOG"); task.environment = environment
         lock.lock()
         guard !cancelled else { lock.unlock(); throw CancellationError() }
         self.process = task; self.pipe = pipe; self.output = output
@@ -152,7 +157,9 @@ final class LinkProcess: @unchecked Sendable {
             buffer.append(data)
             var lines: [String] = []
             while let newline = buffer.firstIndex(of: 10) {
-                lines.append(String(decoding: buffer[..<newline], as: UTF8.self)); buffer.removeSubrange(...newline)
+                let raw = String(decoding: buffer[..<newline].prefix(2048), as: UTF8.self)
+                if let line = logLimiter.accept(raw, now: ProcessInfo.processInfo.systemUptime) { lines.append(line) }
+                buffer.removeSubrange(...newline)
             }
             if buffer.count > 65536 { buffer.removeAll(keepingCapacity: false) }
             return (lines, output)

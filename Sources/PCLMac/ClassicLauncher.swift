@@ -229,7 +229,6 @@ struct ClassicSectionSidebar: View {
                         row("光影包", icon: "Shader", active: store.communityState.kind == .shader) { store.openCommunity(.shader) }
                     case .multiplayer:
                         row("联机", icon: "Online", active: true) {}
-                        row("联机设置", icon: "SetupOther") { store.settingsTab = "联机"; store.page = .settings }
                     case .settings:
                         row("启动", icon: "SetupLaunch", active: store.settingsTab == "启动") { store.settingsTab = "启动" }
                         row("联机", icon: "Online", active: store.settingsTab == "联机") { store.settingsTab = "联机" }

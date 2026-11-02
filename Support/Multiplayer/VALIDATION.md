@@ -71,3 +71,43 @@ including all four real EasyTier integration cases and persistent control frames
 The signed universal build 15 was installed in /Applications and checked in its
 UI: creating a room with unbound port 11464 immediately displayed the Minecraft
 LAN-world instructions, with no generic local-port timeout or relay startup.
+
+## Node retry and storage limits (build 16)
+
+The launcher reads the pinned core's real connector status (0=connected,
+1=disconnected, 2=connecting). Unsuccessful transport entries have an 8-second
+startup grace; HTTPS discovery entries have 25 seconds for resolution/handshake.
+They are then removed through the core's connector RPC, rather than merely hiding
+warnings while the core keeps retrying. Failed probes cool down for
+30/60/120/240/300 seconds; two healthy entries suspend spare probes. Loss of a
+healthy entry resumes due probes automatically. Query failures do not mark every
+entry dead, and cancellation terminates pending maintenance commands.
+
+Logs are pipe-only: explicit --file-log-level off, isolated per-session working
+directory, inherited RUST_LOG removed. Duplicate runtime warnings are coalesced
+before scheduling UI work; at most four runtime output callbacks per second.
+Each UI log entry is clipped around 2 KB; the tail has both a 200-entry and 64-KB
+bound. Failed-session metadata owned by exited launcher PIDs is reclaimed at the
+next room creation; active processes, unknown folders and game data are preserved.
+
+Eight focused tests cover status decoding, real failure grace, increasing/capped
+cooldowns, retaining healthy connections, recovery after loss, unsuccessful RPC
+mutation handling, 10,000 repeated warnings, unique-message bursts, Unicode log
+size/count caps and conservative abandoned-session cleanup. A real-core test
+kept an independently handshaken local relay while removing a refused connector,
+verified no log files in the working directory, and checked process termination.
+All four existing real-core Minecraft TCP/UDP and Scaffolding cases also passed.
+Full regression: 331 tests, 317 passed, 14 opt-in skipped, zero failures.
+Universal arm64/x86_64 build completed and signed build 16 installed.
+The multiplayer sidebar now contains only the multiplayer entry; settings remain
+available through Settings > Multiplayer.
+
+Installed-app validation used a disposable loopback listener, not a Minecraft
+world or user save. With custom peers empty, build 16 established two actual
+public discovery connections. Connector RPC initially reported two handshaken
+entries plus three still-probing entries; a later check reported only the two
+handshaken entries and zero failed/probing entries. The UI displayed public-node
+labels and merged-log counters, with the 200-entry/64-KB/no-disk explanation.
+No session log files were created. Closing the test room removed all session
+metadata and EasyTier processes; the disposable listener was then stopped.
+The original game-port field was restored and the log panel collapsed.

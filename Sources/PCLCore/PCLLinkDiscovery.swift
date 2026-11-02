@@ -92,7 +92,7 @@ public actor PCLLinkDiscovery {
         // The operator may change its underlying address without an app update.
         var result = ["https://etnode.zkitefly.eu.org/node2"]
         for peer in peers.shuffled() where !result.contains(peer) {
-            result.append(peer); if result.count == 4 { break }
+            result.append(peer); if result.count == 8 { break }
         }
         return result
     }

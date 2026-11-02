@@ -97,7 +97,7 @@ public struct PCLLinkConfiguration: Sendable {
     }
     public func coreArguments(configFile: URL) -> [String] {
         ["--config-file", configFile.path, "--rpc-portal", "127.0.0.1:\(rpcPort)",
-         "--rpc-portal-whitelist", "127.0.0.1/32", "--disable-env-parsing", "--console-log-level", "warn"]
+         "--rpc-portal-whitelist", "127.0.0.1/32", "--disable-env-parsing"] + LinkRuntimeOptions.logging
     }
     public var connectionAddress: String { "127.0.0.1:\(localPort)" }
     public var toml: String {

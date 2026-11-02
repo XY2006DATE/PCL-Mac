@@ -56,6 +56,7 @@ public actor PCLMultiplayerSession {
     private var core: LinkProcess?
     private var advertisement: LinkLANAdvertisement?
     private var monitor: Task<Void, Never>?
+    private var nodeMaintenance: Task<Void, Never>?
     private var activeFolder: URL?
     private var generation = UUID()
     public init(directory: URL, supervisor: URL) { self.directory = directory; self.supervisor = supervisor }
@@ -77,8 +78,7 @@ public actor PCLMultiplayerSession {
         if role == .host { try await LinkTCPProbe.requireGame(port: invite.port) }
         try check(operation)
         guard FileManager.default.isExecutableFile(atPath: supervisor.path) else { throw PCLLinkError.invalid("缺少联机进程管理模块，请使用完整的 Mac 应用构建。") }
-        let folder = directory.appendingPathComponent(UUID().uuidString, isDirectory: true)
-        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
+        let folder = try LinkSessionStorage.create(in: directory)
         activeFolder = folder
         let file = folder.appendingPathComponent("room.toml")
         do {
@@ -88,10 +88,11 @@ public actor PCLMultiplayerSession {
             event(.progress(role == .host ? (automatic ? "正在自动建立房间网络……" : "正在创建房间，连接自定义节点……") : "正在加入房间，查找房主……"))
             let child = LinkProcess(); core = child
             reservations.release()
-            try child.start(executable: supervisor, arguments: [binaries.core.path] + config.coreArguments(configFile: file)) { line in
+            try child.start(executable: supervisor, arguments: [binaries.core.path] + config.coreArguments(configFile: file), workingDirectory: folder) { line in
                 if line.lowercased().contains("network_secret") { event(.output("[联机凭据字段已隐藏]")) }
                 else { event(.output(invite.redacting(line))) }
             }
+            nodeMaintenance = Task { await LinkNodeMaintenance.run(cli: binaries.cli, rpc: rpc, peers: config.peers, event: event) }
             let deadline = ProcessInfo.processInfo.systemUptime + 75
             var ready: [PCLLinkPeer]?
             while ProcessInfo.processInfo.systemUptime < deadline {
@@ -158,6 +159,7 @@ public actor PCLMultiplayerSession {
     }
     public func stop() {
         generation = UUID(); monitor?.cancel(); monitor = nil
+        nodeMaintenance?.cancel(); nodeMaintenance = nil
         advertisement?.stop(); advertisement = nil
         core?.stop(); core = nil
         if let folder = activeFolder { try? FileManager.default.removeItem(at: folder) }

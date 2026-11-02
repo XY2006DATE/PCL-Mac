@@ -14,6 +14,7 @@ import SwiftUI
     @Published var portText = ""
     @Published var inviteText = ""
     @Published var logs: [String] = []
+    private var logBuffer = LinkLogBuffer()
     @Published var customPeers = UserDefaults.standard.string(forKey: "PCLSwiftUI.link.peers.v1") ?? "" {
         didSet { UserDefaults.standard.set(customPeers, forKey: "PCLSwiftUI.link.peers.v1") }
     }
@@ -64,7 +65,7 @@ import SwiftUI
         let custom = customPeers.trimmingCharacters(in: .whitespacesAndNewlines)
         let configured: [String]?
         do { configured = custom.isEmpty ? nil : try PCLLinkPeers.parse(custom) } catch { failure = error.localizedDescription; return }
-        let id = UUID(); operation = id; failure = nil; snapshot = nil; logs = []; phase = .preparing; message = "自动准备联机环境"
+        let id = UUID(); operation = id; failure = nil; snapshot = nil; logs = []; logBuffer = LinkLogBuffer(); phase = .preparing; message = "自动准备联机环境"
         let latency = latencyFirst
         task = Task { [self] in
             do {
@@ -90,7 +91,7 @@ import SwiftUI
         let automatic = advertisedPeers != nil || custom.isEmpty || (role == .host && roomProtocol == .direct)
         let configured: [String]?
         do { configured = try advertisedPeers ?? (custom.isEmpty ? nil : PCLLinkPeers.parse(custom)) } catch { failure = error.localizedDescription; return }
-        let id = UUID(); operation = id; failure = nil; snapshot = nil; logs = []
+        let id = UUID(); operation = id; failure = nil; snapshot = nil; logs = []; logBuffer = LinkLogBuffer()
         phase = .preparing; message = "检查联机环境"
         let latency = latencyFirst
         task = Task { [self] in
@@ -125,7 +126,7 @@ import SwiftUI
         switch event {
         case .progress(let text): message = text
         case .output(let text):
-            if !text.isEmpty { logs.append(text); if logs.count > 200 { logs.removeFirst(logs.count - 200) } }
+            if !text.isEmpty { logBuffer.append(text); logs = logBuffer.lines }
         case .connected(let value):
             snapshot = value; phase = .connected
             message = value.reconnecting ? "连接恢复中" : (value.isHost ? (value.automatic && value.playerCount < 2 ? "房间已就绪，等待朋友加入" : "已创建房间") : "已加入房间")
@@ -195,7 +196,7 @@ struct MultiplayerView: View {
                         ForEach(Array(room.peers.enumerated()), id: \.offset) { _, peer in
                             HStack {
                                 PCLIcon("Online").frame(width: 17, height: 17)
-                                Text(peer.isHost ? "房主" : (peer.isLocal ? store.preferences.playerName : (UUID(uuidString: peer.hostname) != nil ? "玩家" : peer.hostname))).lineLimit(1)
+                                Text(peer.isHost ? "房主" : (peer.isLocal ? store.preferences.playerName : (UUID(uuidString: peer.hostname) != nil ? "玩家" : (peer.hostname.hasPrefix("PublicServer") ? "公共节点 · " + peer.hostname : peer.hostname)))).lineLimit(1)
                                 Spacer(); Text(peer.connection)
                                 Text(peer.latencyMS.map { String(format: "%.1f ms", $0) } ?? "—").frame(width: 85, alignment: .trailing)
                             }.font(.custom("PCL English", size: 12))
@@ -243,6 +244,8 @@ struct MultiplayerView: View {
             }
             if !model.logs.isEmpty {
                 PCLCard(title: "联机日志", collapsible: true, expanded: false) {
+                    Text("仅保留最近 200 条、最多 64 KB；重复日志自动合并，不写入磁盘。")
+                        .font(.custom("PCL English", size: 11)).foregroundStyle(.secondary)
                     ScrollView([.horizontal, .vertical]) {
                         Text(model.logs.joined(separator: "\n")).font(.system(size: 11, design: .monospaced)).textSelection(.enabled)
                     }.frame(height: 180)

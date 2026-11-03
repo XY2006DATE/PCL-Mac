@@ -41,6 +41,20 @@ final class LinkMaintenanceTests: XCTestCase {
         XCTAssertTrue(actions.contains(.add(dead)))
         XCTAssertFalse(actions.contains(.remove(a)))
     }
+    func testCESharedRendezvousIsReprobedEvenWithTwoUnrelatedHealthyRelays() {
+        var policy = LinkNodePolicy(peers: [a,b,dead], now: 0, rendezvousPeers: [dead])
+        XCTAssertEqual(policy.actions(status: [status(a),status(b)], now: 25), [.remove(dead)])
+        policy.applied(.remove(dead), now: 25)
+        XCTAssertEqual(policy.actions(status: [status(a),status(b)], now: 54), [])
+        XCTAssertEqual(policy.actions(status: [status(a),status(b)], now: 55), [.add(dead)])
+        policy.applied(.add(dead), now: 55)
+        XCTAssertEqual(policy.actions(status: [status(a),status(b),status(dead)], now: 60), [])
+        XCTAssertEqual(policy.actions(status: [status(a),status(b),status(dead)], now: 300), [])
+    }
+    func testUnconfiguredCERendezvousNeverAddsPublicNodesToCustomOnlyRoom() {
+        var policy = LinkNodePolicy(peers: [a,b], now: 0, rendezvousPeers: [dead])
+        XCTAssertEqual(policy.actions(status: [status(a),status(b)], now: 300), [])
+    }
     func testRetryDoesNotReAddBeforeRemovalActuallySucceeded() {
         var policy = LinkNodePolicy(peers: [a], now: 0)
         XCTAssertEqual(policy.actions(status: [], now: 10), [.remove(a)])

@@ -26,7 +26,9 @@ struct LinkNodePolicy {
         var retryAt: TimeInterval = 0
     }
     private var nodes: [Node]
-    init(peers: [String], now: TimeInterval) {
+    private let rendezvous: Set<String>
+    init(peers: [String], now: TimeInterval, rendezvousPeers: [String] = []) {
+        rendezvous = Set(rendezvousPeers).intersection(peers)
         var seen = Set<String>()
         nodes = peers.filter { seen.insert($0).inserted }.map { Node(url: $0, since: now) }
     }
@@ -41,12 +43,15 @@ struct LinkNodePolicy {
                 if now - nodes[i].since >= grace { result.append(.remove(nodes[i].url)) }
             }
         }
-        // Keep connected entries. Two independent discoveries are sufficient;
-        // avoid probing dead backups forever when the room is already reachable.
-        if connected.count < 2 {
+        // Keep healthy relays, but continue bounded probes of the rendezvous
+        // entries CE uses. Two unrelated relays need not share peer discovery.
+        if connected.count < 2 || !rendezvous.isSubset(of: connected) {
             let probing = nodes.filter { $0.active && !connected.contains($0.url) }.count
             let slots = max(0, 2 - probing)
-            let waiting = nodes.filter { !$0.active && now >= $0.retryAt }.sorted { $0.retryAt < $1.retryAt }
+            let waiting = nodes.filter { !$0.active && now >= $0.retryAt && (connected.count < 2 || rendezvous.contains($0.url)) }.sorted {
+                if rendezvous.contains($0.url) != rendezvous.contains($1.url) { return rendezvous.contains($0.url) }
+                return $0.retryAt < $1.retryAt
+            }
             result += waiting.prefix(slots).map { .add($0.url) }
         }
         return Array(result.prefix(4))
@@ -67,8 +72,9 @@ struct LinkNodePolicy {
 }
 
 enum LinkNodeMaintenance {
-    static func run(cli: URL, rpc: UInt16, peers: [String], event: @escaping @Sendable (PCLRoomEvent) -> Void) async {
-        var policy = LinkNodePolicy(peers: peers, now: ProcessInfo.processInfo.systemUptime)
+    static func run(cli: URL, rpc: UInt16, peers: [String], rendezvousPeers: [String] = [], event: @escaping @Sendable (PCLRoomEvent) -> Void) async {
+        var policy = LinkNodePolicy(peers: peers, now: ProcessInfo.processInfo.systemUptime, rendezvousPeers: rendezvousPeers)
+        var logLimiter = LinkLogLimiter()
         while !Task.isCancelled {
             do {
                 let data = try await LinkCommand.run(cli, ["-p", "127.0.0.1:\(rpc)", "-o", "json", "connector", "list"])
@@ -80,10 +86,16 @@ enum LinkNodeMaintenance {
                     let verb: String, url: String
                     switch action { case .remove(let value): verb = "remove"; url = value
                     case .add(let value): verb = "add"; url = value }
-                    _ = try await LinkCommand.run(cli, ["-p", "127.0.0.1:\(rpc)", "connector", verb, url])
+                    // A timed-out prior CLI call may already have completed in
+                    // the core. Reconcile from its authoritative connector list.
+                    let alreadyApplied = verb == "remove" ? !status.contains(where: { $0.url.url == url }) : status.contains(where: { $0.url.url == url })
+                    if !alreadyApplied {
+                        _ = try await LinkCommand.run(cli, ["-p", "127.0.0.1:\(rpc)", "connector", verb, url], timeout: 10)
+                    }
                     try Task.checkCancellation()
                     policy.applied(action, now: ProcessInfo.processInfo.systemUptime)
-                    event(.output(verb == "remove" ? "已暂停不可用入口的快速重试；保留已连通节点，稍后自动探测备用入口。" : "正在自动探测冷却后的备用入口。"))
+                    let message = verb == "remove" ? "已暂停不可用入口的快速重试；保留已连通节点，稍后自动探测备用入口。" : "正在自动探测冷却后的备用入口。"
+                    if let line = logLimiter.accept(message, now: ProcessInfo.processInfo.systemUptime) { event(.output(line)) }
                 }
             } catch is CancellationError { return }
             catch { /* Query failure is not evidence that every node is dead. */ }

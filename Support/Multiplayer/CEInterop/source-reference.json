@@ -1,0 +1,12 @@
+{
+  "source": "user-supplied PCL-CE tree",
+  "checked_on": "2026-11-04",
+  "sha256": {
+    "PCL.Core/Link/Scaffolding/LobbyCodeGenerator.cs": "dbd64bd3c93c28e67f8a946e86db83a6fdc721d02f71bbc75fa243c6a513fb17",
+    "PCL.Core/Link/Scaffolding/Client/ScaffoldingClient.cs": "d6bf358b04b9291c528d1466bfa89249e967e719bb0af0a22802d47f1314424c",
+    "PCL.Core/Link/Scaffolding/Server/ScaffoldingServer.cs": "f9e25b59bdb22a1107d4fe0143367875e51bd6853d103858e83af96ae582d0a7",
+    "PCL.Core/Link/Scaffolding/EasyTier/EasyTierEntity.cs": "2b3b0df7d543564681afe99d625f8d7e54691891b2d136e89a9668a3dc95c790",
+    "PCL.Core/Utils/JsonCompat.cs": "1bb1ec481f6bfcff1b0575fda0f74b45b25237b20c7bc12496c7c4285ce14072"
+  },
+  "commit": "a8589e07486a7a6fd4af92c9bcfccc291730739b"
+}

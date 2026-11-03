@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <CESource Condition="'$(CESource)' == ''">$(MSBuildThisFileDirectory)../../../../PCL-CE</CESource>
+  </PropertyGroup>
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <Compile Include="Program.cs" />
+    <Compile Include="$(CESource)/PCL.Core/Link/Scaffolding/EasyTier/EasyTierMetadata.cs" />
+    <Compile Include="$(CESource)/PCL.Core/Link/Scaffolding/LobbyCodeGenerator.cs" />
+    <Compile Include="$(CESource)/PCL.Core/Link/Scaffolding/Client/**/*.cs" />
+    <Compile Include="$(CESource)/PCL.Core/Link/Scaffolding/Server/**/*.cs" Exclude="$(CESource)/PCL.Core/Link/Scaffolding/Server/ScaffoldingServerContext.cs" />
+    <Compile Include="$(CESource)/PCL.Core/Link/Scaffolding/Exceptions/*.cs" />
+    <Compile Include="$(CESource)/PCL.Core/Utils/JsonCompat.cs" />
+  </ItemGroup>
+</Project>

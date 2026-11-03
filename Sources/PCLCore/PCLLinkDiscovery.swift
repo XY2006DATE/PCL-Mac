@@ -44,12 +44,14 @@ public actor PCLLinkDiscovery {
                                        "tcp://public2.easytier.cn:54321", "udp://turn.sc.629957.xyz:11010"]
     public static let catalogURL = URL(string: "https://uptime.easytier.cn/api/nodes?page=1&per_page=50&is_active=true")!
     public static let alternateCatalogURL = URL(string: "https://raw.githubusercontent.com/ldoubil/astral.github.io/main/src/data/server.json")!
-    // The same public discovery URLs used by PCL CE's Scaffolding implementation.
-    // EasyTier resolves these HTTPS URLs into the operator's current peer address.
+    // CE always includes these entry points. A random pair of catalog relays
+    // does not prove discovery compatibility with CE's independently chosen set.
+    public static let scaffoldingRendezvousPeers = [
+        "tcp://public.easytier.top:11010", "tcp://public2.easytier.cn:54321",
+        "https://etnode.zkitefly.eu.org/node1", "https://etnode.zkitefly.eu.org/node2",
+        "https://etnode.zkitefly.eu.org/-node1", "https://etnode.zkitefly.eu.org/-node2"]
     public static func scaffoldingPeers(_ selected: [String]) throws -> [String] {
-        try PCLLinkPeers.parse((selected + ["tcp://public.easytier.top:11010", "tcp://public2.easytier.cn:54321",
-            "https://etnode.zkitefly.eu.org/node1", "https://etnode.zkitefly.eu.org/node2",
-            "https://etnode.zkitefly.eu.org/-node1", "https://etnode.zkitefly.eu.org/-node2"]).joined(separator: ","), maximum: 16)
+        try PCLLinkPeers.parse((scaffoldingRendezvousPeers + selected).joined(separator: ","), maximum: 16)
     }
     private let cache: URL
     private struct Cache: Codable { let date: Date; let peers: [String] }

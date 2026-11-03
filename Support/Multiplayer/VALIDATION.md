@@ -111,3 +111,48 @@ labels and merged-log counters, with the 200-entry/64-KB/no-disk explanation.
 No session log files were created. Closing the test room removed all session
 metadata and EasyTier processes; the disposable listener was then stopped.
 The original game-port field was restored and the log panel collapsed.
+
+## Supplied PCL CE source comparison (build 17)
+
+Directly linked the user's PCL-CE protocol source (hashes in
+CEInterop/source-reference.json) into a test-only .NET 10 console fixture.
+No CE protocol/client/server/serializer source was rewritten for these tests;
+application logging, static metadata and server context are fixture dependencies.
+The original CE persistent client and Mac control server completed port exchange,
+ping and 12 seconds of membership heartbeats. Mac RPCs also exchanged messages
+with the original CE server and CE's own lobby parser confirmed Mac identity.
+Two additional EasyTier tests used the supplied CE flags, including KCP/QUIC and
+p2p-only, and verified TCP and UDP game payloads in both directions.
+
+A discovery-policy defect was identified: two unrelated healthy catalog relays
+suppressed retries of CE's common rendezvous entry points. Prioritize those
+common entry points and keep their exponential-backoff probes even while other
+relays are healthy. An actual three-relay recovery test proved that a late CE
+entry point is readmitted despite two already-healthy unrelated relays; all
+three connectors completed real handshakes. Ordinary backup probes still pause,
+and custom-only rooms never add unconfigured public nodes. Maintenance messages
+are coalesced as well as runtime warnings. Progress stages and final errors are
+now included in the existing bounded in-memory log, without disk persistence.
+
+The CE source also hardcodes p2p-only: unavailable direct traversal can still
+prevent that Windows endpoint from carrying relayed data. The Mac doesn't copy
+that restriction and doesn't change CE or weaken the network security settings.
+These tests execute on one Mac, not on an independent Windows device. They
+identify and cover a discovery bug but cannot prove it was the only cause of the
+user's Internet failure without the failing peer's trace and dual-device QA.
+
+The first expanded regression exposed an intermittent failure while applying a
+Mac game forward: the generic 4-second CLI deadline expired during core
+initialization/route churn. Read-only queries keep their short bound; forward
+configuration now has a 15-second bound and connector mutation has 10 seconds.
+Node maintenance reconciles an already-applied add/remove against authoritative
+connector status, instead of endlessly retrying a mutation whose CLI timed out.
+The focused CE transport and policy retest passed after these changes.
+
+Final regression with CE source and real EasyTier opt-ins: 338 tests,
+324 passed, 14 skipped, zero failures (160 seconds). The final universal build
+was re-signed, signature-verified and installed as build 17. Its UI launched
+normally and the multiplayer sidebar retained only the multiplayer entry.
+All fixture processes stopped. The dedicated downloaded .NET SDK/build server
+was removed after validation; it is not shipped in the application. Reproducing
+the optional CE-source tests requires supplying a .NET 10 SDK as documented.

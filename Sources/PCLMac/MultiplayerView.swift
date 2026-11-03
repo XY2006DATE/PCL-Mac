@@ -81,7 +81,7 @@ import SwiftUI
                     Task { @MainActor in guard let self, self.operation == id else { return }; self.receive(event) }
                 }
             } catch is CancellationError { if operation == id { phase = .idle; message = "已取消联机" } }
-            catch { if operation == id { phase = .failed; failure = invite.redacting(error.localizedDescription); message = "联机失败" } }
+            catch { if operation == id { phase = .failed; failure = invite.redacting(error.localizedDescription); logBuffer.append(failure ?? "联机失败"); logs = logBuffer.lines; message = "联机失败" } }
             if operation == id { task = nil }
         }
     }
@@ -117,23 +117,27 @@ import SwiftUI
             } catch is CancellationError {
                 if operation == id { phase = .idle; message = "已取消联机" }
             } catch {
-                if operation == id { phase = .failed; failure = invite.redacting(error.localizedDescription); message = "联机失败" }
+                if operation == id { phase = .failed; failure = invite.redacting(error.localizedDescription); logBuffer.append(failure ?? "联机失败"); logs = logBuffer.lines; message = "联机失败" }
             }
             if operation == id { task = nil }
         }
     }
     private func receive(_ event: PCLRoomEvent) {
         switch event {
-        case .progress(let text): message = text
+        case .progress(let text):
+            if message != text { logBuffer.append(text); logs = logBuffer.lines }; message = text
         case .output(let text):
             if !text.isEmpty { logBuffer.append(text); logs = logBuffer.lines }
         case .connected(let value):
             snapshot = value; phase = .connected
             message = value.reconnecting ? "连接恢复中" : (value.isHost ? (value.automatic && value.playerCount < 2 ? "房间已就绪，等待朋友加入" : "已创建房间") : "已加入房间")
-        case .failed(let text): failure = text; phase = .failed; snapshot = nil; message = "联机已结束"
+        case .failed(let text):
+            logBuffer.append(text); logs = logBuffer.lines
+            failure = text; phase = .failed; snapshot = nil; message = "联机已结束"
         }
     }
     func stop() {
+        if isActive { logBuffer.append("已主动退出或取消联机。"); logs = logBuffer.lines }
         operation = UUID(); task?.cancel(); task = nil
         snapshot = nil; phase = .idle; message = "已退出联机"; failure = nil
         cleanup = Task { await session.stop(); await scaffolding.stop() }

@@ -41,15 +41,20 @@ public actor ScaffoldingSession {
             try child.start(executable: supervisor, arguments: [binaries.core.path, "--config-file", file.path, "--rpc-portal", "127.0.0.1:\(rpc)", "--rpc-portal-whitelist", "127.0.0.1/32", "--disable-env-parsing"] + LinkRuntimeOptions.logging, workingDirectory: folder) { line in
                 event(.output(line.lowercased().contains("network_secret") ? "[联机凭据字段已隐藏]" : invite.redacting(line)))
             }
-            nodeMaintenance = Task { await LinkNodeMaintenance.run(cli: binaries.cli, rpc: rpc, peers: nodes, event: event) }
+            nodeMaintenance = Task { await LinkNodeMaintenance.run(cli: binaries.cli, rpc: rpc, peers: nodes, rendezvousPeers: PCLLinkDiscovery.scaffoldingRendezvousPeers, event: event) }
             let deadline = ProcessInfo.processInfo.systemUptime + 75
             var initial: [PCLLinkPeer] = [], target: PCLLinkPeer?
+            var reportedDiscovery = false
             while ProcessInfo.processInfo.systemUptime < deadline {
                 try check(operation)
                 guard child.isRunning else { throw PCLLinkError.invalid("联机模块已退出，请查看日志。") }
                 if let list = try? await PCLMultiplayerSession.queryPeers(binaries.cli, port: rpc) {
                     try check(operation)
                     if isHost, list.contains(where: { $0.isLocal && $0.ipv4 == "10.114.51.41" }) { initial = list; break }
+                    if !isHost, !reportedDiscovery, list.contains(where: { !$0.isLocal }) {
+                        reportedDiscovery = true
+                        event(.progress("公共发现入口已连通，正在查找房主……"))
+                    }
                     let hosts = list.filter { !$0.isLocal && $0.hostname.hasPrefix("scaffolding-mc-server-") }
                     guard hosts.count <= 1 else { throw PCLLinkError.invalid("检测到重复房主，请重新创建大厅。") }
                     if !isHost, let host = hosts.first, list.contains(where: { $0.isLocal && !$0.ipv4.isEmpty }) {
@@ -65,7 +70,7 @@ public actor ScaffoldingSession {
             if let target {
                 guard let remoteControl = UInt16(target.hostname.split(separator: "-").last ?? ""), remoteControl > 1024,
                       target.ipv4 == "10.114.51.41" else { throw PCLLinkError.invalid("房主控制端口无效。") }
-                event(.progress("已找到房主，正在交换大厅信息……"))
+                event(.progress("已找到房主（\(target.connection)），正在交换大厅信息……"))
                 try await Self.forward(cli: binaries.cli, rpc: rpc, proto: "tcp", local: control, remote: remoteControl)
                 try await Task.sleep(nanoseconds: 5_000_000_000); try check(operation)
                 var result: Data?
@@ -73,7 +78,7 @@ public actor ScaffoldingSession {
                     do { result = try await ScaffoldingRPC.call(port: control, type: "c:server_port"); break }
                     catch { try check(operation); try await Task.sleep(nanoseconds: 700_000_000) }
                 }
-                guard let result, result.count == 2 else { throw PCLLinkError.invalid("无法获取房主的游戏端口，请稍后重新加入。") }
+                guard let result, result.count == 2 else { throw PCLLinkError.invalid("已发现房主，但未能完成大厅控制连接。部分 PCL CE 构建仅允许直连；连接公共节点并不代表双方已打洞成功。请保持房间开启后重新加入。") }
                 remoteGamePort = (UInt16(result[0]) << 8) | UInt16(result[1])
                 guard remoteGamePort > 1024 else { throw PCLLinkError.invalid("房主尚未对局域网开放游戏。") }
                 for proto in ["tcp", "udp"] { try await Self.forward(cli: binaries.cli, rpc: rpc, proto: proto, local: local, remote: remoteGamePort) }
@@ -132,7 +137,7 @@ public actor ScaffoldingSession {
         return profiles
     }
     private static func forward(cli: URL, rpc: UInt16, proto: String, local: UInt16, remote: UInt16) async throws {
-        _ = try await LinkCommand.run(cli, ["-p", "127.0.0.1:\(rpc)", "port-forward", "add", proto, "127.0.0.1:\(local)", "10.114.51.41:\(remote)"])
+        _ = try await LinkCommand.run(cli, ["-p", "127.0.0.1:\(rpc)", "port-forward", "add", proto, "127.0.0.1:\(local)", "10.114.51.41:\(remote)"], timeout: 15)
     }
     private static func snapshot(invite: ScaffoldingInvite, isHost: Bool, gamePort: UInt16, local: UInt16, peers: [PCLLinkPeer], names: [String], reconnecting: Bool) -> PCLRoomSnapshot {
         var value = PCLRoomSnapshot(isHost: isHost, inviteCode: invite.code, gamePort: gamePort, localAddress: "127.0.0.1:\(local)", peers: peers, reconnecting: reconnecting)

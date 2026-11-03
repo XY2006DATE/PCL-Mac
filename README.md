@@ -96,7 +96,7 @@ python3 scripts/make-version-action-icons.py --check
 
 启动器并行获取 EasyTier 公共节点目录和 Astral 发布的节点目录，校验地址并缓存一天；目录不可用时使用内置候选入口。自动模式同时包含 CE 使用的公共发现地址。EasyTier 尝试 IPv6／IPv4 点对点连接，能否打洞与中继取决于双方网络和公共服务可用性。连接状态显示实际直连／中继；仅生成大厅码时显示“等待朋友加入”，不会把本地启动成功当作互联网已互通。公共节点均为社区服务，不是本项目运营的服务器。
 
-自动维护会读取 EasyTier 的实际握手状态，保留连通入口，并将持续失败的入口从快速重连列表移除。备用入口采用 30／60／120／240／300 秒冷却；已有两个入口连通时暂停额外探测，连接丢失后自动恢复备用探测。没有可用入口时会显示发现服务不可用提示，无需手动填写节点。
+自动维护会读取 EasyTier 的实际握手状态，保留连通入口，并将持续失败的入口从快速重连列表移除。备用入口采用 30／60／120／240／300 秒冷却；已有两个入口连通时暂停普通备用探测；CE 共用发现入口仍按冷却间隔探测，避免两边各自连接不同节点而无法发现。连接丢失后自动恢复其他备用探测。没有可用入口时会显示发现服务不可用提示，无需手动填写节点。
 
 联机日志只保存在内存，最多 200 条且不超过 64 KB，单条截断并合并重复警告，限制向界面发送的日志频率。明确关闭 EasyTier 文件日志，不继承外部 `RUST_LOG` 调试设置。退出房间会停止节点维护；下次建立房间时回收已退出进程遗留的本应用房间临时目录。联机侧栏只保留“联机”，高级选项仍在“设置 → 联机”。
 
@@ -118,3 +118,5 @@ PCL_EASYTIER_TEST_DIR=/path/to/test-runtime swift test --filter MultiplayerInteg
 ```
 
 协议参考：[PCL CE Scaffolding 实现](https://github.com/PCL-Community/PCL-CE/tree/dev/PCL.Core/Link/Scaffolding)、[原版 PCL v02](https://github.com/Meloong-Git/PCL/wiki/简洁联机标记约定)。
+
+CE 源码互通验证与复现方法见 [CEInterop](Support/Multiplayer/CEInterop/README.md)。已验证提供的 CE 原始客户端／服务器与 Mac 的双向握手、持续心跳和 TCP／UDP 数据；测试在同一 Mac 上运行，独立 Windows 设备与实际互联网游戏仍需验收。部分 CE 构建硬编码 `p2p-only`，直连无法建立时可能拒绝中继数据，这不是 Mac 单侧能够取消的对端限制。

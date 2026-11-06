@@ -85,7 +85,7 @@ struct PCLInstallProgressSidebar: View {
 
     private func metric(_ title: String, value: String) -> some View {
         VStack(spacing: 0) {
-            Text(title)
+            Text(store.text(title))
                 .font(.custom("PCL English", size: 14))
                 .foregroundStyle(Color.pclBlue)
                 .frame(height: 20)
@@ -150,7 +150,7 @@ struct PCLDownloadProgressCard: View {
                 }
             }
             .padding(.top, 40).padding(.leading, 14).padding(.trailing, 15).padding(.bottom, 10)
-            Text(title)
+            Text(store.text(title))
                 .font(.custom("PCL English", size: 13).weight(.bold))
                 .foregroundStyle(Color.pclBlue)
                 .lineLimit(1).truncationMode(.tail)
@@ -200,11 +200,12 @@ private struct PCLInstallStageRow: View {
     let title: String
     let state: InstallStageState
     let fraction: Double
+    @Environment(\.locale) private var locale
 
     var body: some View {
         HStack(alignment: .top, spacing: 0) {
             status.frame(width: 50, height: 26, alignment: .top)
-            Text(title)
+            Text(InterfaceLanguage.text(title, locale: locale))
                 .font(.custom("PCL English", size: 13))
                 .foregroundStyle(ClassicTheme.text)
                 .lineLimit(1).truncationMode(.tail)

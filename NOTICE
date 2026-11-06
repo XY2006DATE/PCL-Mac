@@ -19,8 +19,8 @@ Source-derived resources include images from Plain Craft Launcher 2/Images/,
 Font.ttf from Plain Craft Launcher 2/Resources/Font.ttf, and icons converted
 from original XAML path geometry. The source-map.json files under Resources/
 record the original XAML paths and geometry hashes. AppIcon.icns is derived
-from the original PCL artwork. Original contributor attribution, including
-HerobrineXia, is also retained in the application's About page.
+from the original PCL artwork. HerobrineXia is a collaborator on the original
+PCL project.
 
 OfflineLogin.swift separately records its GetStableHashCode implementation
 reference from MeloongCore at revision

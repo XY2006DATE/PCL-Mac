@@ -9,6 +9,7 @@ import SwiftUI
     var body: some Scene {
         WindowGroup("PCL Mac版") {
             LauncherView().environmentObject(store)
+                .environment(\.locale, store.interfaceLocale)
                 .frame(minWidth: 940, minHeight: 600)
                 .ignoresSafeArea(.container, edges: .top)
                 .overlay(alignment: .topLeading) {
@@ -22,14 +23,14 @@ import SwiftUI
         .windowResizability(.contentMinSize)
         .commands {
             CommandGroup(replacing: .appInfo) {
-                Button("关于 PCL Mac版") { store.page = .about }.keyboardShortcut("i", modifiers: [.command, .option])
+                Button(store.text("关于 PCL Mac版")) { store.page = .about }.keyboardShortcut("i", modifiers: [.command, .option])
             }
             CommandGroup(after: .newItem) {
-                Button("打开游戏文件夹") { store.revealGameDirectory() }.keyboardShortcut("o", modifiers: [.command, .shift])
-                Button("刷新本地版本") { Task { await store.refreshLocal() } }.keyboardShortcut("r")
+                Button(store.text("打开游戏文件夹")) { store.revealGameDirectory() }.keyboardShortcut("o", modifiers: [.command, .shift])
+                Button(store.text("刷新本地版本")) { Task { await store.refreshLocal() } }.keyboardShortcut("r")
             }
             CommandGroup(replacing: .appSettings) {
-                Button("设置…") { store.page = .settings }.keyboardShortcut(",")
+                Button(store.text("设置…")) { store.page = .settings }.keyboardShortcut(",")
             }
         }
     }

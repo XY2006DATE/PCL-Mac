@@ -498,7 +498,7 @@ extension ModLoaderKind {
         runModdedInstallation(profileID: targetID, directory: directory,
                               summary: "安装 \(loader.kind.displayName) \(loader.version)",
                               checkCancellationAfterOperation: fabricAPI == nil) { [self] progress in
-            let java = try await installationJava(minecraftVersion: base.id, metadataURL: base.url)
+            let java = try await installationJava(minecraftVersion: base.id, metadataURL: base.url, progress: progress)
             guard let fabricAPI else {
                 try await modLoaderInstaller.install(version: loader, minecraftVersion: base, gameDirectory: directory,
                     profileID: targetID, javaExecutable: java.executable, progress: progress)
@@ -549,7 +549,7 @@ extension ModLoaderKind {
         currentRemoteSelection = nil
         resetModdedSelection()
         runModdedInstallation(profileID: targetID, directory: directory, summary: "安装游戏组件", checkCancellationAfterOperation: false) { [self] progress in
-            let java = try await installationJava(minecraftVersion: base.id, metadataURL: base.url)
+            let java = try await installationJava(minecraftVersion: base.id, metadataURL: base.url, progress: progress)
             try await extraComponentsInstaller.install(minecraft: base, loader: loader, selection: selection, fabricAPI: api,
                 gameDirectory: directory, profileID: targetID, javaExecutable: java.executable, progress: progress)
         }
@@ -560,7 +560,7 @@ extension ModLoaderKind {
         let directory = gameDirectory
         runModdedInstallation(profileID: version.id, directory: directory,
                               summary: "补全 \(loader.kind.displayName) \(loader.version)") { [self] progress in
-            let java = try await installationJava(minecraftVersion: remote.id, metadataURL: remote.url)
+            let java = try await installationJava(minecraftVersion: remote.id, metadataURL: remote.url, progress: progress)
             try await modLoaderInstaller.install(version: loader, minecraftVersion: remote, gameDirectory: directory,
                 profileID: version.id, javaExecutable: java.executable, progress: progress)
         }
@@ -645,6 +645,7 @@ extension ModLoaderKind {
     func importSelectedModpack() {
         guard let archive = moddedState.modpackArchive, let descriptor = moddedState.modpackDescriptor,
               !moddedState.inspectingModpack, !isBusy, !isGameRunning else { return }
+        guard minecraftDownloadsAvailable else { moddedState.modpackError = minecraftDownloadRegionMessage; return }
         if let error = modpackNameError { moddedState.modpackError = error; return }
         let targetID = moddedState.modpackNameDraft
         let directory = gameDirectory
@@ -652,7 +653,7 @@ extension ModLoaderKind {
         runModdedInstallation(profileID: targetID, directory: directory, summary: "导入整合包 \(descriptor.name)") { [self] progress in
             if remoteVersions.isEmpty { await fetchManifest() }
             let metadataURL = remoteVersions.first { $0.id == descriptor.minecraftVersion }?.url
-            let java = try await installationJava(minecraftVersion: descriptor.minecraftVersion, metadataURL: metadataURL)
+            let java = try await installationJava(minecraftVersion: descriptor.minecraftVersion, metadataURL: metadataURL, progress: progress)
             try await modpackImporter.importPack(archive: archive, gameDirectory: directory, profileID: targetID,
                 javaExecutable: java.executable, progress: progress)
         }
@@ -660,7 +661,7 @@ extension ModLoaderKind {
 
     func runModdedInstallation(profileID: String, directory: URL, summary: String,
         selectVersionOnSuccess: Bool = true, successPage: LauncherPage = .library, successMessage: String? = nil,
-        checkCancellationAfterOperation: Bool = true,
+        checkCancellationAfterOperation: Bool = true, onSuccess: (() -> Void)? = nil,
         operation: @escaping (@escaping @Sendable (InstallProgress) -> Void) async throws -> Void) {
         guard !isBusy, !isGameRunning else { return }
         let token = UUID()
@@ -713,11 +714,15 @@ extension ModLoaderKind {
             if !failed { installProgress = nil }
             installTask = nil
             await refreshLocal()
-            if completedInstallID == profileID && page == .activity { page = successPage }
+            if completedInstallID == profileID {
+                if page == .activity { page = successPage }
+                if !Task.isCancelled { onSuccess?() }
+            }
         }
     }
 
-    func installationJava(minecraftVersion: String, metadataURL: URL? = nil) async throws -> JavaRuntime {
+    func installationJava(minecraftVersion: String, metadataURL: URL? = nil,
+                          progress: @escaping @Sendable (InstallProgress) -> Void) async throws -> JavaRuntime {
         var required = MinecraftVersionMetadata.requiredJava(["id": minecraftVersion])
         if let metadataURL {
             let data = try await MinecraftInstaller.fetchData(url: metadataURL)
@@ -727,15 +732,16 @@ extension ModLoaderKind {
             required = MinecraftVersionMetadata.requiredJava(metadata)
         }
         try Task.checkCancellation()
-        if !preferences.javaPath.isEmpty {
-            guard let runtime = JavaDiscovery.inspect(executable: URL(fileURLWithPath: preferences.javaPath)), runtime.majorVersion >= required else {
-                throw LauncherError.invalidJava("该整合包或组件需要 Java \(required) 或更新版本，请在设置中更换 Java。")
-            }
+        if !preferences.javaPath.isEmpty,
+           let runtime = JavaDiscovery.inspect(executable: URL(fileURLWithPath: preferences.javaPath)), runtime.majorVersion >= required {
             return runtime
         }
         if let runtime = javaRuntimes.first(where: { $0.majorVersion == required })
             ?? javaRuntimes.filter({ $0.majorVersion >= required }).min(by: { $0.majorVersion < $1.majorVersion }) { return runtime }
-        throw LauncherError.invalidJava("未找到 Java \(required) 或更新版本，请在设置中手动导入对应的 Java。")
+        return try await installJavaRuntime(major: required, architecture: InstallPlatform.architecture) { value in
+            // The component installer publishes its own revision sequence after Java setup.
+            progress(InstallProgress(message: value.message, completed: 0, total: 1))
+        }
     }
 
     private func suggestedPackName(_ value: String) -> String {

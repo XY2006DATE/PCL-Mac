@@ -10,6 +10,7 @@ struct PCLCard<Content: View>: View {
     let collapsible: Bool
     let content: Content
     @State private var expanded: Bool
+    @Environment(\.locale) private var locale
 
     init(title: String, collapsible: Bool = false, expanded: Bool = true, @ViewBuilder content: () -> Content) {
         self.title = title; self.collapsible = collapsible; self.content = content()
@@ -32,7 +33,7 @@ struct PCLCard<Content: View>: View {
 
     private var header: some View {
         HStack {
-            Text(title).font(.custom("PCL English", size: 13).weight(.bold)).foregroundStyle(Color(red: 0.20, green: 0.24, blue: 0.29))
+            Text(InterfaceLanguage.text(title, locale: locale)).font(.custom("PCL English", size: 13).weight(.bold)).foregroundStyle(Color(red: 0.20, green: 0.24, blue: 0.29))
             Spacer()
             if collapsible { PCLIcon(expanded ? "ChevronUp" : "ChevronDown").frame(width: 10, height: 10).foregroundStyle(Color.pclBlue) }
         }.padding(.horizontal, 15).frame(height: 40).contentShape(Rectangle())

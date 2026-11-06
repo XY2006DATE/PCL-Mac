@@ -30,7 +30,7 @@ import PCLCore
     func backToDownloadList() { currentRemoteSelection = nil; resetModdedSelection() }
 
     func installSelectedVersion() {
-        guard let version = currentRemoteSelection, !isBusy, !isGameRunning else { return }
+        guard let version = currentRemoteSelection, !isBusy, !isGameRunning, checkMinecraftDownloadRegion() else { return }
         if let error = installNameError { errorMessage = error; return }
         if moddedState.selectedLoader != nil || moddedState.selectedOptiFine != nil || moddedState.selectedLiteLoader != nil || moddedState.selectedOptiFabric != nil {
             installSelectedModdedVersion(); return

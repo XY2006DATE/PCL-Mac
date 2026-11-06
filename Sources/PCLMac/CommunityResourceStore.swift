@@ -123,7 +123,7 @@ private enum CommunityArchiveCache {
         communityState.kind = nil
         communityState.selectedProject = nil
         page = .downloads
-        if remoteVersions.isEmpty && !manifestLoading { Task { await fetchManifest() } }
+        if minecraftDownloadsAvailable && remoteVersions.isEmpty && !manifestLoading { Task { await fetchManifest() } }
     }
 
     func resetCommunitySearch() {
@@ -358,6 +358,7 @@ private enum CommunityArchiveCache {
         let dependencies = communityState.includeDependencies
         let world = communityState.targetWorldPath.isEmpty ? nil : URL(fileURLWithPath: communityState.targetWorldPath)
         if project.kind == .modpack {
+            guard minecraftDownloadsAvailable else { communityState.downloadError = minecraftDownloadRegionMessage; return }
             let profileID = communityState.downloadName
             dismissCommunityDownload()
             runModdedInstallation(profileID: profileID, directory: root, summary: "安装整合包 \(project.name)") { [self] progress in
@@ -370,9 +371,11 @@ private enum CommunityArchiveCache {
                 let descriptor = try await modpackImporter.inspect(archive: archive)
                 if remoteVersions.isEmpty { await fetchManifest() }
                 let metadataURL = remoteVersions.first { $0.id == descriptor.minecraftVersion }?.url
-                let java = try await installationJava(minecraftVersion: descriptor.minecraftVersion, metadataURL: metadataURL)
+                let java = try await installationJava(minecraftVersion: descriptor.minecraftVersion, metadataURL: metadataURL,
+                                                      progress: { sequence.publish($0, phase: 1) })
+                sequence.begin(2)
                 try await modpackImporter.importPack(archive: archive, gameDirectory: root, profileID: profileID,
-                    javaExecutable: java.executable, progress: { sequence.publish($0, phase: 1) })
+                    javaExecutable: java.executable, progress: { sequence.publish($0, phase: 2) })
             }
         } else if let target = installedVersions.first(where: { $0.id == communityState.targetVersionID }) {
             dismissCommunityDownload()

@@ -26,7 +26,7 @@ enum LauncherPage: String, CaseIterable, Identifiable {
         case .downloads: return "从 Mojang 官方源获取原版游戏。"
         case .versionSettings: return "管理所选版本的显示与独立启动设置。"
         case .activity: return "下载进度与游戏输出，尽在此处。"
-        case .multiplayer: return "创建或加入原版 PCL 联机房间。"
+        case .multiplayer: return "创建或加入异地联机房间。"
         case .settings: return "让启动器适合你的使用习惯。"
         case .about: return "一份面向 macOS 的原生重构。"
         }
@@ -42,6 +42,9 @@ struct LauncherPreferences: Codable {
         .appendingPathComponent("PCL-SwiftUI/minecraft").path
     var playerName = ""
     var javaPath = ""
+    var javaDownloadSource: JavaInstaller.Source?
+    var interfaceLanguage: InterfaceLanguage?
+    var downloadRegion: String?
     var memoryMB = 4096
     var selectedVersion = ""
     var showSnapshots = false
@@ -79,6 +82,7 @@ struct LauncherPreferences: Codable {
     @Published var statusMessage = "准备就绪"
     @Published var search = ""
     @Published var showLaunchConsent = false
+    @Published private(set) var launchNeedsJava = false
     @Published var currentRemoteSelection: RemoteVersion?
     @Published var installNameDraft = ""
     @Published var showHiddenVersions = false
@@ -143,9 +147,11 @@ struct LauncherPreferences: Codable {
         if !javaPath.isEmpty {
             return javaRuntimes.first { $0.executable.path == javaPath }
         }
-        let requirement = selectedVersion?.requiredJava ?? 17
-        return javaRuntimes.first { $0.majorVersion == requirement }
-            ?? javaRuntimes.filter { $0.majorVersion >= requirement }.min { $0.majorVersion < $1.majorVersion }
+        let requirement = selectedVersion?.requiredJava ?? 21
+        let architecture = selectedVersion?.requiredJavaArchitecture
+        let compatible = javaRuntimes.filter { architecture == nil || $0.architecture == architecture }
+        return compatible.first { $0.majorVersion == requirement }
+            ?? compatible.filter { $0.majorVersion >= requirement }.min { $0.majorVersion < $1.majorVersion }
     }
     var visibleRemoteVersions: [RemoteVersion] {
         remoteVersions.filter {
@@ -216,6 +222,7 @@ struct LauncherPreferences: Codable {
         scanning = true
         let directory = gameDirectory
         let customJava = preferences.javaPath
+        let knownJavaIDs = Set(javaRuntimes.map(\.id))
         let result = await Task.detached(priority: .userInitiated) { () -> ([InstalledVersion], [JavaRuntime], [String: VersionProfileSettings], [String: String], [String]) in
             var runtimes = JavaDiscovery.discover()
             if !customJava.isEmpty, !runtimes.contains(where: { $0.executable.path == customJava }),
@@ -243,7 +250,8 @@ struct LauncherPreferences: Codable {
         installedVersions = result.0.filter {
             FileManager.default.fileExists(atPath: $0.directory.appendingPathComponent("\($0.id).json").path)
         }
-        javaRuntimes = result.1
+        let scannedJavaIDs = Set(result.1.map(\.id))
+        javaRuntimes = result.1 + javaRuntimes.filter { !knownJavaIDs.contains($0.id) && !scannedJavaIDs.contains($0.id) }
         let availableIDs = Set(installedVersions.map(\.id))
         versionProfileCache = result.2.filter { availableIDs.contains($0.key) }
         originalVersionIDs = result.3.filter { availableIDs.contains($0.key) }
@@ -264,7 +272,7 @@ struct LauncherPreferences: Codable {
     }
 
     func install(_ version: RemoteVersion, profileID: String? = nil) {
-        guard !isBusy, !isGameRunning else { return }
+        guard !isBusy, !isGameRunning, checkMinecraftDownloadRegion() else { return }
         let targetID = profileID ?? version.id
         installingID = targetID
         completedInstallID = nil
@@ -304,7 +312,7 @@ struct LauncherPreferences: Codable {
     }
 
     func repair(_ version: InstalledVersion) {
-        guard !isBusy, !isGameRunning else { return }
+        guard !isBusy, !isGameRunning, checkMinecraftDownloadRegion() else { return }
         let directory = gameDirectory
         let sourceID = remoteVersionID(for: version)
         preparingInstall = true
@@ -337,7 +345,9 @@ struct LauncherPreferences: Codable {
         guard let version = selectedVersion else { page = .downloads; return }
         do { preferences.playerName = try OfflineLogin.validateName(preferences.playerName, versionID: remoteVersionID(for: version)) }
         catch { errorMessage = error.localizedDescription; return }
+        launchNeedsJava = false
         do { _ = try launchConfiguration(for: version) }
+        catch LauncherError.invalidJava(_) where usesAutomaticJava(for: version) { launchNeedsJava = true }
         catch { report(error); return }
         showLaunchConsent = true
     }
@@ -345,6 +355,11 @@ struct LauncherPreferences: Codable {
     func launchGame() {
         showLaunchConsent = false
         guard let version = selectedVersion, !isBusy, !isGameRunning else { return }
+        if launchNeedsJava {
+            launchNeedsJava = false
+            installJava(thenLaunch: version)
+            return
+        }
         guard completeOfflineLogin(reportErrors: true) else { return }
         let configuration: LaunchConfiguration
         do { configuration = try launchConfiguration(for: version) }
@@ -361,6 +376,7 @@ struct LauncherPreferences: Codable {
                     try launcher.launch(configuration: configuration, onOutput: { output in
                         Task { @MainActor in
                             state.appendLog(output)
+                            state.multiplayerState.observeGameOutput(output)
                             if output.contains("Created:"), output.contains("textures/atlas/") {
                                 state.hasRenderedGame = true
                                 state.statusMessage = "游戏已启动"
@@ -369,6 +385,7 @@ struct LauncherPreferences: Codable {
                     }, onExit: { code in
                         Task { @MainActor in
                             state.isGameRunning = false
+                            state.multiplayerState.gameExited()
                             state.applyGameVisibility(started: false)
                             let stopped = state.requestedGameStop
                             state.statusMessage = stopped ? "游戏已停止" : (code == 0 ? "游戏已退出" : "游戏异常退出（\(code)）")
@@ -400,6 +417,37 @@ struct LauncherPreferences: Codable {
             preferences.gamePath = url.path
             Task { await refreshLocal() }
         }
+    }
+
+    private func usesAutomaticJava(for version: InstalledVersion) -> Bool {
+        let mode = profileSettings(for: version).javaConfigurationMode
+        return mode == "auto" || (mode == "global" && preferences.javaPath.isEmpty)
+    }
+
+    func installJava(thenLaunch version: InstalledVersion? = nil) {
+        let target = version ?? selectedVersion
+        let major = target?.requiredJava ?? 21
+        let architecture = target?.requiredJavaArchitecture ?? InstallPlatform.architecture
+        let directory = gameDirectory
+        runModdedInstallation(profileID: "Java \(major)", directory: directory, summary: "安装 Java",
+            selectVersionOnSuccess: false, successPage: version == nil ? .settings : .launch, onSuccess: { [self] in
+                if let version, selectedVersion?.id == version.id, gameDirectory == directory { launchGame() }
+            }) { [self] progress in
+                _ = try await installJavaRuntime(major: major, architecture: architecture, progress: progress)
+            }
+    }
+
+    func installJavaRuntime(major: Int, architecture: String,
+                            progress: @escaping @Sendable (InstallProgress) -> Void) async throws -> JavaRuntime {
+        if let existing = javaRuntimes.first(where: { $0.majorVersion == major && $0.architecture == architecture }),
+           let runtime = JavaDiscovery.inspect(executable: existing.executable) {
+            return runtime
+        }
+        let runtime = try await JavaInstaller.install(major: major, architecture: architecture,
+                                                     preferredSource: preferences.javaDownloadSource ?? .zulu, progress: progress)
+        javaRuntimes.append(runtime)
+        appendLog("已安装 \(runtime.displayName)。")
+        return runtime
     }
 
     func chooseJava() {

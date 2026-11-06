@@ -20,9 +20,11 @@
 		373C71F69EE6D8030E564B82 /* VersionModifyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A37CF612A1D52F744171D6F /* VersionModifyView.swift */; };
 		39A3C8099928C12734180B57 /* VersionExportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86D70ADCA3CE4A6DF4077849 /* VersionExportView.swift */; };
 		3D4117D3BA53D300D1174C21 /* GoldBlock.png in Resources */ = {isa = PBXBuildFile; fileRef = 1D13D520E4662AAD37F9799E /* GoldBlock.png */; };
+		44DD1303D315284DE1F78CFB /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 00662836D3C89C5142A30622 /* Localizable.strings */; };
 		4945333F10A6B14016AF4C67 /* VersionRowActions.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFA991736970AAF5F3C2CC5B /* VersionRowActions.swift */; };
 		5E5D474FBA9EABA79AB94032 /* Font.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 7E0F9DAAB2DFC3FC2F4F66F2 /* Font.ttf */; };
 		67FB72B6DF1F95814FE814DF /* Grass.png in Resources */ = {isa = PBXBuildFile; fileRef = 45F5DA0F1AFA667DFD75D433 /* Grass.png */; };
+		6A28DF736B2053D135A16FBF /* LauncherLocalization.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1CF70333E99F072E1DCE0EA /* LauncherLocalization.swift */; };
 		71C2E6F417B1ADDED65BC7FC /* VersionModifyStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = C6CA8ADC0E33279426DD523D /* VersionModifyStore.swift */; };
 		729C64A5FC53C06443C693C9 /* VersionModStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4DC7C0F9A043C376A7928317 /* VersionModStore.swift */; };
 		7441BBD444776A0F2F3501EA /* Fabric.png in Resources */ = {isa = PBXBuildFile; fileRef = 38017379527A5A5ED6CAB896 /* Fabric.png */; };
@@ -39,6 +41,7 @@
 		9658A6CBCE5C4A4191CC8827 /* InstanceNavigation.swift in Sources */ = {isa = PBXBuildFile; fileRef = C6EF08F1BA0A1684719CC9B0 /* InstanceNavigation.swift */; };
 		9EF8FB9E54F873EA2B0904EB /* VersionModView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08FF97595060CCD5B1F54942 /* VersionModView.swift */; };
 		9F87ABB58295CD7D1F39113B /* LauncherView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58287D2DAF09D990C85F8242 /* LauncherView.swift */; };
+		A740DCD9C8B6CA0A85D03568 /* XY2006DATE.png in Resources */ = {isa = PBXBuildFile; fileRef = D46BD8CC711C9AF1DC7AABBB /* XY2006DATE.png */; };
 		B066F60B5F87210695A6E830 /* CommunityResourceStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87B7FC9C25E828C94571FF4D /* CommunityResourceStore.swift */; };
 		B0D05A9DB12B48462558BA13 /* NeoForge.png in Resources */ = {isa = PBXBuildFile; fileRef = 3FCBFE5FC50116663E46A450 /* NeoForge.png */; };
 		B19368F9496E458043969E24 /* Logo.png in Resources */ = {isa = PBXBuildFile; fileRef = 9388C4F8F71DC9D30B964209 /* Logo.png */; };
@@ -80,6 +83,7 @@
 		2C1E15D53A646F0A06E9ED15 /* HerobrineXia.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = HerobrineXia.png; sourceTree = "<group>"; };
 		326321AF5FBC4F088CADABE0 /* PCL-Mac */ = {isa = PBXFileReference; lastKnownFileType = folder; name = "PCL-Mac"; path = .; sourceTree = SOURCE_ROOT; };
 		328F08709DB535345394FD8E /* EasyTier-LICENSE.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "EasyTier-LICENSE.txt"; sourceTree = "<group>"; };
+		346F44B040F6469C8491DA58 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
 		38017379527A5A5ED6CAB896 /* Fabric.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = Fabric.png; sourceTree = "<group>"; };
 		3AFBF62ED3B9C4B366FA7983 /* LICENCE */ = {isa = PBXFileReference; path = LICENCE; sourceTree = "<group>"; };
 		3E9AF0C8BE8CB8637525F2E5 /* ModdedInstallStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModdedInstallStore.swift; sourceTree = "<group>"; };
@@ -111,10 +115,12 @@
 		B6CBD3288507C6F933D7490B /* DownloadLibraryViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadLibraryViews.swift; sourceTree = "<group>"; };
 		BFA991736970AAF5F3C2CC5B /* VersionRowActions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VersionRowActions.swift; sourceTree = "<group>"; };
 		C0D871E88826D7F522CA2CAD /* CommandBlock.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = CommandBlock.png; sourceTree = "<group>"; };
+		C1CF70333E99F072E1DCE0EA /* LauncherLocalization.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LauncherLocalization.swift; sourceTree = "<group>"; };
 		C6CA8ADC0E33279426DD523D /* VersionModifyStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VersionModifyStore.swift; sourceTree = "<group>"; };
 		C6CEC336B06E3660539E352C /* MultiplayerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MultiplayerView.swift; sourceTree = "<group>"; };
 		C6EF08F1BA0A1684719CC9B0 /* InstanceNavigation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstanceNavigation.swift; sourceTree = "<group>"; };
 		CB328FA5F310788BF29F91E1 /* VersionActions */ = {isa = PBXFileReference; lastKnownFileType = folder; name = VersionActions; path = Resources/VersionActions; sourceTree = SOURCE_ROOT; };
+		D46BD8CC711C9AF1DC7AABBB /* XY2006DATE.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = XY2006DATE.png; sourceTree = "<group>"; };
 		E48F314DFC5902D68FB0D2A0 /* Anvil.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = Anvil.png; sourceTree = "<group>"; };
 		E73016E447A040B2165562FE /* PCLSourceIcons.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PCLSourceIcons.swift; sourceTree = "<group>"; };
 		EC59394A96C7C7F5A79B8EED /* InstanceNavigation */ = {isa = PBXFileReference; lastKnownFileType = folder; name = InstanceNavigation; path = Resources/InstanceNavigation; sourceTree = SOURCE_ROOT; };
@@ -154,6 +160,7 @@
 				B586E5672ACE287702E48536 /* GlobalSettingsView.swift */,
 				97D9963816292185E8402730 /* InstallProgressViews.swift */,
 				C6EF08F1BA0A1684719CC9B0 /* InstanceNavigation.swift */,
+				C1CF70333E99F072E1DCE0EA /* LauncherLocalization.swift */,
 				48F106AA5F8A2E5E48DF9EEB /* LauncherStore.swift */,
 				58287D2DAF09D990C85F8242 /* LauncherView.swift */,
 				3E9AF0C8BE8CB8637525F2E5 /* ModdedInstallStore.swift */,
@@ -226,6 +233,8 @@
 				79E36854DD1805C16D1D7F17 /* RedstoneBlock.png */,
 				582813FF286460A67A600BA2 /* RedstoneLampOff.png */,
 				F3EE33379FFECE0F20AC6AD4 /* RedstoneLampOn.png */,
+				D46BD8CC711C9AF1DC7AABBB /* XY2006DATE.png */,
+				00662836D3C89C5142A30622 /* Localizable.strings */,
 			);
 			path = Resources;
 			sourceTree = "<group>";
@@ -311,6 +320,7 @@
 				0100531F73B2C2A75C04F49C /* InstanceNavigation in Resources */,
 				1B871812E6F8F88F7B4A8D33 /* LICENCE in Resources */,
 				B6786CE9A956D2C9F2BBB67C /* LTCat.jpg in Resources */,
+				44DD1303D315284DE1F78CFB /* Localizable.strings in Resources */,
 				B19368F9496E458043969E24 /* Logo.png in Resources */,
 				B0D05A9DB12B48462558BA13 /* NeoForge.png in Resources */,
 				EE2E20EBF8FC42C587A70A47 /* OptiFabric.png in Resources */,
@@ -322,6 +332,7 @@
 				C3D55FFBEE8E8246D60508FE /* SourceIcons in Resources */,
 				F7CAB70EC5EE2E1B920CD0D4 /* TopNavigation in Resources */,
 				FA9DB711450C3ED9E2F72737 /* VersionActions in Resources */,
+				A740DCD9C8B6CA0A85D03568 /* XY2006DATE.png in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -363,6 +374,7 @@
 				02FDA139F5FF7060EBAFFE67 /* GlobalSettingsView.swift in Sources */,
 				F9461BC175E3332353ADB2CE /* InstallProgressViews.swift in Sources */,
 				9658A6CBCE5C4A4191CC8827 /* InstanceNavigation.swift in Sources */,
+				6A28DF736B2053D135A16FBF /* LauncherLocalization.swift in Sources */,
 				E9338EB69FD545C47C4B6A79 /* LauncherStore.swift in Sources */,
 				9F87ABB58295CD7D1F39113B /* LauncherView.swift in Sources */,
 				8B70A16F717C4D1D9AF871FB /* ModdedInstallStore.swift in Sources */,
@@ -386,6 +398,17 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXVariantGroup section */
+		00662836D3C89C5142A30622 /* Localizable.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				346F44B040F6469C8491DA58 /* en */,
+			);
+			name = Localizable.strings;
+			sourceTree = "<group>";
+		};
+/* End PBXVariantGroup section */
 
 /* Begin XCBuildConfiguration section */
 		17F2B3FB7062DA64F6A44CF1 /* Release */ = {

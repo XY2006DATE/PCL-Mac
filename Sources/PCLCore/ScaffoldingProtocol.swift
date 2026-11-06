@@ -150,9 +150,10 @@ final class ScaffoldingServer: @unchecked Sendable {
     private var cancelled = false
     private var startup: CheckedContinuation<Void, Error>?
     private var timeout: DispatchWorkItem?
-    private let gamePort: UInt16
+    private var gamePort: UInt16
     private let host: ScaffoldingProfile
     init(gamePort: UInt16, host: ScaffoldingProfile) { self.gamePort = gamePort; self.host = host }
+    func publishGamePort(_ port: UInt16) { queue.async { [self] in gamePort = port } }
     func start(port: UInt16) async throws {
         try await withTaskCancellationHandler {
             try await withCheckedThrowingContinuation { waiter in

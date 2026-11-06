@@ -16,7 +16,10 @@ final class MultiplayerIntegrationTests: XCTestCase {
     func testScaffoldingRoomControlDiscoveryProfilesAndGameTCPUDP() async throws {
         try await exercise(automatic: false, scaffolding: true)
     }
-    private func exercise(automatic: Bool, ipv6: Bool = false, scaffolding: Bool = false) async throws {
+    func testScaffoldingGuestsJoinBeforeHostPublishesGamePort() async throws {
+        try await exercise(automatic: false, scaffolding: true, deferredPort: true)
+    }
+    private func exercise(automatic: Bool, ipv6: Bool = false, scaffolding: Bool = false, deferredPort: Bool = false) async throws {
         guard let path = ProcessInfo.processInfo.environment["PCL_EASYTIER_TEST_DIR"] else { throw XCTSkip("Set PCL_EASYTIER_TEST_DIR for real-core loopback integration") }
         let binaries = URL(fileURLWithPath: path)
         let root = FileManager.default.temporaryDirectory.appendingPathComponent("PCL-link-test-" + UUID().uuidString)
@@ -45,30 +48,6 @@ final class MultiplayerIntegrationTests: XCTestCase {
         if !automatic {
             try relay.start(executable: binaries.appendingPathComponent("PCLLinkSupervisor"), arguments: [binaries.appendingPathComponent("easytier-core").path, "--config-file", relayFile.path, "--rpc-portal", "127.0.0.1:\(relayRPC)", "--disable-env-parsing", "--console-log-level", "error"])
         }
-        // Same local application socket receives both TCP and UDP forwarded traffic.
-        try echo.start(executable: URL(fileURLWithPath: "/usr/bin/python3"), arguments: ["-c", """
-        import socket,threading,time
-        port=\(gamePort)
-        def serve(c):
-          with c:
-            while True:
-              b=c.recv(65536)
-              if not b: break
-              c.sendall(b)
-        def tcp():
-          s=socket.socket();s.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1);s.bind(('127.0.0.1',port));s.listen()
-          while True:
-            c,_=s.accept();threading.Thread(target=serve,args=(c,),daemon=True).start()
-        def udp():
-          s=socket.socket(socket.AF_INET,socket.SOCK_DGRAM);s.bind(('127.0.0.1',port))
-          while True:
-            b,a=s.recvfrom(65536);s.sendto(b,a)
-        threading.Thread(target=tcp,daemon=True).start();threading.Thread(target=udp,daemon=True).start();time.sleep(180)
-        """])
-        for _ in 0..<20 {
-            if (try? await LinkTCPProbe.connect(port: gamePort, timeout: 0.2)) != nil { break }
-            try await Task.sleep(nanoseconds: 100_000_000)
-        }
         let host = PCLMultiplayerSession(directory: root.appendingPathComponent("host"), supervisor: binaries.appendingPathComponent("PCLLinkSupervisor"))
         let guest = PCLMultiplayerSession(directory: root.appendingPathComponent("guest"), supervisor: binaries.appendingPathComponent("PCLLinkSupervisor"))
         let scaffoldHost = ScaffoldingSession(directory: root.appendingPathComponent("host"), supervisor: binaries.appendingPathComponent("PCLLinkSupervisor"))
@@ -80,7 +59,7 @@ final class MultiplayerIntegrationTests: XCTestCase {
             if scaffolding {
                 // A real AES-GCM room discovered through an unrelated shared
                 // node, followed by the CE-compatible binary control exchange.
-                async let creating: Void = scaffoldHost.open(invite: scaffoldInvite, gamePort: gamePort, peers: nodes, latencyFirst: false, playerName: "Host", machineID: UUID().uuidString, binaries: urls) { events.receive($0) }
+                async let creating: Void = scaffoldHost.open(invite: scaffoldInvite, gamePort: deferredPort ? 0 : gamePort, peers: nodes, latencyFirst: false, playerName: "Host", machineID: UUID().uuidString, binaries: urls) { events.receive($0) }
                 async let joining: Void = scaffoldGuest.open(invite: scaffoldInvite, gamePort: nil, peers: nodes, latencyFirst: false, playerName: "Guest", machineID: UUID().uuidString, binaries: urls) { events.receive($0) }
                 _ = try await (creating, joining)
                 XCTAssertEqual(events.guest?.playerNames, ["Host", "Guest"])
@@ -106,7 +85,51 @@ final class MultiplayerIntegrationTests: XCTestCase {
             let room = try XCTUnwrap(events.guest)
             XCTAssertTrue(room.peers.contains { $0.isHost && !$0.isLocal })
             XCTAssertGreaterThanOrEqual(room.playerCount, 2)
-            let localPort = try XCTUnwrap(UInt16(room.localAddress.split(separator: ":").last ?? ""))
+            if deferredPort {
+                XCTAssertEqual(room.gamePort, 0)
+                XCTAssertTrue(room.localAddress.isEmpty)
+                XCTAssertEqual(events.host?.inviteCode, room.inviteCode)
+                do {
+                    try await scaffoldHost.publishGamePort(gamePort)
+                    XCTFail("Published a port with no listening game")
+                } catch {}
+            }
+            // Establish the room first, then bring up a non-Minecraft service on the shared port.
+            // Same local application socket receives both TCP and UDP forwarded traffic.
+            try echo.start(executable: URL(fileURLWithPath: "/usr/bin/python3"), arguments: ["-c", """
+            import socket,threading,time
+            port=\(gamePort)
+            def serve(c):
+              with c:
+                while True:
+                  b=c.recv(65536)
+                  if not b: break
+                  c.sendall(b)
+            def tcp():
+              s=socket.socket();s.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1);s.bind(('127.0.0.1',port));s.listen()
+              while True:
+                c,_=s.accept();threading.Thread(target=serve,args=(c,),daemon=True).start()
+            def udp():
+              s=socket.socket(socket.AF_INET,socket.SOCK_DGRAM);s.bind(('127.0.0.1',port))
+              while True:
+                b,a=s.recvfrom(65536);s.sendto(b,a)
+            threading.Thread(target=tcp,daemon=True).start();threading.Thread(target=udp,daemon=True).start();time.sleep(180)
+            """])
+            for _ in 0..<20 {
+                if (try? await LinkTCPProbe.connect(port: gamePort, timeout: 0.2)) != nil { break }
+                try await Task.sleep(nanoseconds: 100_000_000)
+            }
+            if deferredPort {
+                try await scaffoldHost.publishGamePort(gamePort)
+                for _ in 0..<20 {
+                    if events.guest?.gamePort == gamePort { break }
+                    try await Task.sleep(nanoseconds: 300_000_000)
+                }
+                XCTAssertEqual(events.guest?.gamePort, gamePort)
+                XCTAssertEqual(events.guest?.inviteCode, room.inviteCode)
+            }
+            let address = try XCTUnwrap(events.guest?.localAddress)
+            let localPort = try XCTUnwrap(UInt16(address.split(separator: ":").last ?? ""))
             let output = try await LinkCommand.run(URL(fileURLWithPath: "/usr/bin/python3"), ["-c", """
             import socket
             payload=b'PCL-native-forward-validation'*4096

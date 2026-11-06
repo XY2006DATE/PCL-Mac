@@ -116,7 +116,6 @@ struct GlobalSettingsView: View {
     var body: some View {
         Group {
             switch store.settingsTab {
-            case "联机": MultiplayerSettingsView(model: store.multiplayerState)
             case "个性化": personalization
             case "其他": other
             default: launch
@@ -125,7 +124,7 @@ struct GlobalSettingsView: View {
     }
     private func row<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
         HStack(alignment: .center, spacing: 15) {
-            Text(title).frame(width: 115, alignment: .leading)
+            Text(store.text(title)).frame(width: 115, alignment: .leading)
             content().frame(maxWidth: .infinity, alignment: .leading)
         }.frame(minHeight: 30)
     }
@@ -205,7 +204,7 @@ struct GlobalSettingsView: View {
                     }.buttonStyle(PCLActionStyle())
                 }.toggleStyle(.checkbox)
             }
-            PCLCard(title: "标题栏") { row("标题栏文本") { TextField("PCL", text: $store.globalSettings.title).textFieldStyle(.roundedBorder) } }
+            PCLCard(title: "标题栏") { row("标题栏文本") { TextField("PCL Mac", text: $store.globalSettings.title).textFieldStyle(.roundedBorder) } }
             PCLCard(title: "主页") {
                 VStack(alignment: .leading, spacing: 15) {
                     row("主页内容") { select("主页内容", $store.globalSettings.homeMode, [("空白", "blank"), ("预设", "preset"), ("读取本地文件", "local"), ("联网更新", "network")]) }
@@ -233,27 +232,111 @@ struct GlobalSettingsView: View {
             }
         }
     }
+    private var languageAndRegion: some View {
+        PCLCard(title: "语言与地区") {
+            VStack(alignment: .leading, spacing: 12) {
+                row("界面语言") {
+                    PCLComboBox(title: "界面语言", selection: Binding(
+                        get: { store.preferences.interfaceLanguage ?? .system },
+                        set: { store.preferences.interfaceLanguage = $0 }
+                    ), options: InterfaceLanguage.allCases.map { .init(title: $0.label, value: $0) })
+                }
+                row("下载地区") {
+                    let locale = store.interfaceLocale
+                    let systemRegion = Locale.autoupdatingCurrent.region?.identifier ?? ""
+                    let name = Self.regionName(systemRegion, locale: locale)
+                    let systemLabel = name.isEmpty ? store.text("跟随系统") : "\(store.text("跟随系统")) · \(name)"
+                    PCLComboBox(title: "下载地区", selection: Binding(
+                        get: { store.preferences.downloadRegion ?? "" },
+                        set: { store.preferences.downloadRegion = $0.isEmpty ? nil : $0 }
+                    ), options: [.init(title: systemLabel, value: "")] + Self.downloadRegions(for: locale))
+                    .disabled(store.isBusy)
+                }
+                Text("下载地区只影响启动器的地区检查。实际下载仍取决于你所在的网络。")
+                    .foregroundStyle(.secondary)
+                if !store.minecraftDownloadsAvailable {
+                    PCLHint(text: store.minecraftDownloadRegionMessage, warning: true)
+                }
+            }
+        }
+    }
+
+    private static func downloadRegions(for locale: Locale) -> [PCLComboBoxOption<String>] {
+        let common = ["CN", "US", "JP", "GB", "SG", "AU", "CA"]
+        let other = Locale.Region.isoRegions.map(\.identifier).filter { !common.contains($0) }
+            .sorted { regionName($0, locale: locale).compare(regionName($1, locale: locale), options: .caseInsensitive, locale: locale) == .orderedAscending }
+        return (common + other).map { .init(title: regionName($0, locale: locale), value: $0) }
+    }
+
+    private static func regionName(_ code: String, locale: Locale) -> String {
+        code == "CN" ? InterfaceLanguage.text("中国大陆", locale: locale) : (locale.localizedString(forRegionCode: code) ?? code)
+    }
+
+    private func downloadSlider(
+        _ title: String,
+        value: Binding<Int>,
+        range: ClosedRange<Int>,
+        marks: [Int],
+        label: (Int) -> String
+    ) -> some View {
+        let sliderValue = Binding<Double>(
+            get: { Double(value.wrappedValue) },
+            set: { value.wrappedValue = Int($0.rounded()) }
+        )
+        let current = label(value.wrappedValue)
+        let markLabels = marks.map(label)
+
+        return row(title) {
+            HStack(alignment: .top) {
+                VStack(spacing: 3) {
+                    Slider(value: sliderValue, in: Double(range.lowerBound)...Double(range.upperBound))
+                        .accessibilityLabel(Text(store.text(title)))
+                        .accessibilityValue(Text(current))
+                    GeometryReader { geometry in
+                        ForEach(marks.indices, id: \.self) { index in
+                            let position = CGFloat(marks[index] - range.lowerBound)
+                                / CGFloat(range.upperBound - range.lowerBound)
+                            Text(markLabels[index])
+                                .font(.system(size: 12).monospacedDigit())
+                                .foregroundStyle(.secondary)
+                                .fixedSize()
+                                .position(x: position * geometry.size.width, y: geometry.size.height / 2)
+                        }
+                    }
+                    .frame(height: 16)
+                    .padding(.horizontal, 10)
+                    .accessibilityHidden(true)
+                }
+                Text(current)
+                    .monospacedDigit()
+                    .frame(width: 85, height: 20)
+                    .accessibilityHidden(true)
+            }
+        }
+    }
+
+    private func downloadSpeedLabel(_ value: Int) -> String {
+        let bytes = DownloadPolicy.speedBytes(slider: value)
+        guard bytes > 0 else { return store.text("无限制") }
+        let mebibytes = (Double(bytes) / 1_048_576).formatted(
+            .number.precision(.fractionLength(0...1)).locale(store.interfaceLocale)
+        )
+        return "\(mebibytes) M/s"
+    }
+
     private var other: some View {
         Group {
+            languageAndRegion
             PCLCard(title: "下载") {
                 VStack(spacing: 15) {
                     row("目标文件夹") {
                         HStack { Text(store.preferences.gamePath).lineLimit(2).textSelection(.enabled); Spacer(); Button("更改") { store.chooseGameDirectory() }.disabled(store.isBusy || store.isGameRunning) }
                     }
                     row("版本列表") { Toggle("显示测试版", isOn: $store.preferences.showSnapshots).toggleStyle(.checkbox) }
-                    row("最大线程数") {
-                        HStack {
-                            Slider(value: Binding(get: { Double(store.globalSettings.downloadThreads) }, set: { store.globalSettings.downloadThreads = Int($0) }), in: 1...256, step: 1)
-                            Text("\(store.globalSettings.downloadThreads)").monospacedDigit().frame(width: 40)
-                        }
-                    }
-                    row("速度限制") {
-                        HStack {
-                            Slider(value: Binding(get: { Double(store.globalSettings.downloadSpeed) }, set: { store.globalSettings.downloadSpeed = Int($0) }), in: 0...42, step: 1)
-                            let bytes = DownloadPolicy.speedBytes(slider: store.globalSettings.downloadSpeed)
-                            Text(bytes == 0 ? "无限制" : String(format: "%.1f M/s", Double(bytes) / 1_048_576)).monospacedDigit().frame(width: 85)
-                        }
-                    }
+                    downloadSlider("最大线程数", value: $store.globalSettings.downloadThreads,
+                                   range: 1...256, marks: [1, 64, 128, 192, 256], label: String.init)
+                    downloadSlider("速度限制", value: $store.globalSettings.downloadSpeed,
+                                   range: 0...42, marks: [0, 9, 21, 31, 42], label: downloadSpeedLabel)
                     Text("线程数为所有文件下载共享的并发上限；速度限制为合计下载速度，缓存复制不计入网络流量。官方源及镜像候选仍按下载器规则选择。")
                         .foregroundStyle(.secondary)
                 }

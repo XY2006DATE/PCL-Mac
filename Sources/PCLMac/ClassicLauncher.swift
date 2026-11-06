@@ -18,11 +18,24 @@ struct ClassicHeader: View {
             HStack {
                 if hasInnerTitle {
                     Button(action: goBack) {
-                        HStack(spacing: 14) { PCLIcon("ArrowLeft").frame(width: 18, height: 18); Text(innerTitle).lineLimit(1) }
+                        HStack(spacing: 14) { PCLIcon("ArrowLeft").frame(width: 18, height: 18); Text(store.text(innerTitle)).lineLimit(1) }
                             .font(.custom("PCL English", size: 18)).foregroundStyle(.white)
                     }.buttonStyle(.plain).padding(.leading, 90)
                 } else {
-                    Text(store.globalSettings.title.isEmpty ? "PCL" : store.globalSettings.title).font(.custom("PCL English", size: 25)).tracking(1).padding(.leading, 90)
+                    let customTitle = store.globalSettings.title
+                    let showsBrand = customTitle.isEmpty || customTitle == "PCL"
+                    HStack(spacing: 8) {
+                        Text(showsBrand ? "PCL" : customTitle)
+                            .font(.custom("PCL English", size: 25)).tracking(1)
+                        if showsBrand {
+                            Text("Mac").font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(ClassicTheme.blue)
+                                .padding(.horizontal, 8).frame(height: 20)
+                                .background(.white, in: Capsule())
+                        }
+                    }
+                    .accessibilityElement(children: .combine)
+                    .padding(.leading, 90)
                 }
                 Spacer()
             }.foregroundStyle(.white)
@@ -64,14 +77,14 @@ struct ClassicHeader: View {
         }
     }
 
-    private func tab(_ name: String, icon: ClassicTopNavigationIcon, selected: Bool, action: @escaping () -> Void) -> some View {
+    private func tab(_ name: LocalizedStringKey, icon: ClassicTopNavigationIcon, selected: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             HStack(spacing: 10) {
                 icon.image.frame(width: 20, height: 20).scaleEffect(icon.logoScale).accessibilityHidden(true)
                 Text(name).font(.custom("PCL English", size: 16))
             }
             .foregroundStyle(selected ? ClassicTheme.blue : .white)
-            .padding(.horizontal, 17.5).frame(height: 34)
+            .padding(.horizontal, store.interfaceLocale.language.languageCode?.identifier == "en" ? 10 : 17.5).frame(height: 34)
             .background(selected ? Color.white : .clear, in: Capsule()).contentShape(Capsule())
         }.buttonStyle(.plain)
     }
@@ -139,9 +152,9 @@ struct ClassicLaunchPanel: View {
                     VStack(spacing: 5) {
                         HStack(spacing: 8) {
                             if store.isLaunching { ProgressView().controlSize(.mini) }
-                            Text(launchTitle).font(.custom("PCL English", size: 16))
+                            Text(store.text(launchTitle)).font(.custom("PCL English", size: 16))
                         }.foregroundStyle(ClassicTheme.blue)
-                        Text(launchSubtitle).font(.custom("PCL English", size: 12)).foregroundStyle(.gray).lineLimit(1)
+                        Text(store.text(launchSubtitle)).font(.custom("PCL English", size: 12)).foregroundStyle(.gray).lineLimit(1)
                     }
                     .frame(maxWidth: .infinity).frame(height: 68)
                     .background(Color.white.opacity(0.65), in: RoundedRectangle(cornerRadius: 3))
@@ -161,7 +174,7 @@ struct ClassicLaunchPanel: View {
         // PageLaunchLeft / MyRadioButton: 16-point source box at the Mac UI scale.
         HStack(spacing: 10) {
             PCLIcon(icon).frame(width: 20, height: 20).scaleEffect(scale)
-            Text(title)
+            Text(store.text(title))
         }
     }
 
@@ -180,7 +193,7 @@ struct ClassicLaunchPanel: View {
 
     private func outlineButton(_ name: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            Text(name).font(.custom("PCL English", size: 15)).foregroundStyle(ClassicTheme.text)
+            Text(store.text(name)).font(.custom("PCL English", size: 15)).foregroundStyle(ClassicTheme.text)
                 .frame(maxWidth: .infinity).frame(height: 44)
                 .background(.white.opacity(0.65), in: RoundedRectangle(cornerRadius: 3))
                 .overlay { RoundedRectangle(cornerRadius: 3).strokeBorder(Color.gray.opacity(0.85), lineWidth: 1) }
@@ -191,6 +204,7 @@ struct ClassicLaunchPanel: View {
 
 struct ClassicSectionSidebar: View {
     @EnvironmentObject private var store: LauncherStore
+    @ObservedObject var multiplayer: MultiplayerState
 
     var body: some View {
         if store.page == .activity && store.showsClassicInstallProgress {
@@ -228,20 +242,19 @@ struct ClassicSectionSidebar: View {
                         row("资源包", icon: "Resourcepack", active: store.communityState.kind == .resourcepack) { store.openCommunity(.resourcepack) }
                         row("光影包", icon: "Shader", active: store.communityState.kind == .shader) { store.openCommunity(.shader) }
                     case .multiplayer:
-                        row("联机", icon: "Online", active: true) {}
+                        ForEach(MultiplayerState.Section.allCases, id: \.self) { section in
+                            let selected = multiplayer.section == section
+                            row(section.rawValue, icon: section.icon, active: selected) { multiplayer.selectSection(section) }
+                                .accessibilityAddTraits(selected ? .isSelected : [])
+                                .disabled(multiplayer.isActive)
+                        }
                     case .settings:
                         row("启动", icon: "SetupLaunch", active: store.settingsTab == "启动") { store.settingsTab = "启动" }
-                        row("联机", icon: "Online", active: store.settingsTab == "联机") { store.settingsTab = "联机" }
                         row("个性化", icon: "Personalize", active: store.settingsTab == "个性化") { store.settingsTab = "个性化" }
                         row("其他", icon: "SetupOther", active: store.settingsTab == "其他") { store.settingsTab = "其他" }
                     default:
-                        row("帮助", icon: "Help") {}.disabled(true)
                         row("关于与鸣谢", icon: "About", active: store.page == .about) { store.page = .about }
-                        row("百宝箱", icon: "Tools") {}.disabled(true)
                         row("启动日志", icon: "Log", active: store.page == .activity) { store.page = .activity }
-                        section(" ")
-                        row("反馈", icon: "Feedback") { NSWorkspace.shared.open(URL(string: "https://github.com/Meloong-Git/PCL/issues")!) }
-                        row("新功能投票", icon: "Vote") { NSWorkspace.shared.open(URL(string: "https://github.com/Meloong-Git/PCL/discussions/2")!) }
                     }
                 }.padding(.top, store.page == .versionSettings ? 18 : 15)
             }
@@ -250,7 +263,7 @@ struct ClassicSectionSidebar: View {
     }
 
     private func section(_ name: String) -> some View {
-        Text(name).font(.custom("PCL English", size: 12)).foregroundStyle(ClassicTheme.text.opacity(0.6))
+        Text(store.text(name)).font(.custom("PCL English", size: 12)).foregroundStyle(ClassicTheme.text.opacity(0.6))
             .padding(.leading, 16).padding(.top, 22).padding(.bottom, 5)
     }
 
@@ -258,7 +271,7 @@ struct ClassicSectionSidebar: View {
         Button(action: action) {
             HStack(spacing: 8) {
                 if let icon { PCLIcon(icon).frame(width: 20, height: 20).scaleEffect(sidebarLogoScale(icon)) }
-                Text(name)
+                Text(store.text(name))
             }.font(.custom("PCL English", size: 14))
                 .foregroundStyle(active ? ClassicTheme.blue : ClassicTheme.text)
                 .frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 23).frame(height: 45)

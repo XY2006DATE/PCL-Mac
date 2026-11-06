@@ -115,8 +115,9 @@ struct PCLIcon: View {
 struct PCLIconLabel: View {
     let title: String
     let icon: String
+    @Environment(\.locale) private var locale
     init(_ title: String, icon: String) { self.title = title; self.icon = icon }
     var body: some View {
-        Label { Text(title) } icon: { PCLIcon(icon).frame(width: 14, height: 14) }
+        Label { Text(InterfaceLanguage.text(title, locale: locale)) } icon: { PCLIcon(icon).frame(width: 14, height: 14) }
     }
 }

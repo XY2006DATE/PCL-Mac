@@ -222,11 +222,7 @@ public final class MinecraftLauncher: @unchecked Sendable {
         let required = MinecraftVersionMetadata.requiredJava(metadata)
         guard java.majorVersion >= required else { throw LauncherError.invalidJava("此版本需要 Java \(required)，当前选择的是 Java \(java.majorVersion)") }
         let libraries = metadata["libraries"] as? [[String: Any]] ?? []
-        let hasArchitectureSpecificNatives = libraries.contains {
-            let name = $0["name"] as? String ?? ""
-            return name.contains(":natives-macos-arm64") || name.contains(":natives-osx-arm64")
-        }
-        if hasArchitectureSpecificNatives, java.architecture != InstallPlatform.architecture {
+        if MinecraftVersionMetadata.hasArchitectureSpecificNatives(libraries), java.architecture != InstallPlatform.architecture {
             throw LauncherError.invalidJava("此版本已按 \(InstallPlatform.architecture) 下载原生库，请选择相同架构的 Java；当前为 \(java.architecture)。")
         }
         let nativesPath = "versions/\(configuration.versionID)/natives-macos-\(java.architecture)"
@@ -293,6 +289,17 @@ public final class MinecraftLauncher: @unchecked Sendable {
             let target = destination.appendingPathComponent(name)
             try extracted.output.write(to: target, options: .atomic)
         }
+    }
+
+    public static func openedLANPort(in output: String) -> UInt16? {
+        let message = "Started serving on "
+        guard let delimiter = output.range(of: "]: "),
+              output[..<delimiter.lowerBound].hasSuffix("/INFO") else { return nil }
+        let body = output[delimiter.upperBound...]
+        guard body.hasPrefix(message),
+              let port = UInt16(body.dropFirst(message.count).trimmingCharacters(in: .whitespacesAndNewlines)),
+              port > 1024 else { return nil }
+        return port
     }
 
     public func launch(configuration: LaunchConfiguration, onOutput: @escaping @Sendable (String) -> Void, onExit: @escaping @Sendable (Int32) -> Void) throws {

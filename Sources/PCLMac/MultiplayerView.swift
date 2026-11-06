@@ -5,13 +5,44 @@ import SwiftUI
 
 @MainActor final class MultiplayerState: ObservableObject {
     enum Phase { case idle, preparing, connecting, connected, failed }
-    enum RoomProtocol: String, CaseIterable { case automatic = "自动联机（CE / HMCL）", direct = "Mac 直连（IPv6 / 局域网）", original = "原版 PCL 自定义节点" }
+    enum Section: String, CaseIterable {
+        case create = "创建房间"
+        case join = "加入房间"
+        case options = "连接选项"
+
+        var icon: String {
+            switch self {
+            case .create: return "RoomCreate"
+            case .join: return "RoomJoin"
+            case .options: return "SetupOther"
+            }
+        }
+    }
+    enum RoomProtocol: String, CaseIterable {
+        case automatic = "自动联机（CE / HMCL）"
+        case direct = "Mac 直连（IPv6 / 局域网）"
+        case original = "原版 PCL 自定义节点"
+
+        var connectionHint: String {
+            switch self {
+            case .automatic:
+                return "自动发现公共入口并尝试 IPv6／IPv4 点对点连接。无法直连时由可用公共节点中继。"
+            case .direct:
+                return "生成供 PCL Mac 版使用的直连码。同一局域网或双方的 IPv6 网络可达时，可以直接连接。"
+            case .original:
+                return "使用原版 PCL 的自定义节点邀请码。房主和来宾需填写同一个自定义节点。"
+            }
+        }
+    }
+    @Published private(set) var section: Section = .create
     @Published var roomProtocol: RoomProtocol = .automatic
     @Published var phase: Phase = .idle
     @Published var message = "准备就绪"
     @Published var failure: String?
     @Published var snapshot: PCLRoomSnapshot?
     @Published var portText = ""
+    @Published private(set) var publishingPort = false
+    private var detectedGamePort: UInt16?
     @Published var inviteText = ""
     @Published var logs: [String] = []
     private var logBuffer = LinkLogBuffer()
@@ -34,9 +65,21 @@ import SwiftUI
     private let machineID = UUID().uuidString
     var isActive: Bool { phase == .preparing || phase == .connecting || phase == .connected }
     var pending: Bool { phase == .preparing || phase == .connecting }
+
+    func selectSection(_ section: Section) {
+        guard !isActive, self.section != section else { return }
+        self.section = section
+        failure = nil
+    }
+
     func create(playerName: String = "PCL Mac 玩家") {
-        guard let port = UInt16(portText.trimmingCharacters(in: .whitespacesAndNewlines)), port > 1024 else {
-            failure = "请先在 Minecraft 中对局域网开放，并填写 1025–65535 之间的端口。"; return
+        let text = portText.trimmingCharacters(in: .whitespacesAndNewlines)
+        if roomProtocol == .automatic, text.isEmpty {
+            beginScaffolding(invite: .create(), port: 0, playerName: playerName)
+            return
+        }
+        guard let port = UInt16(text), port > 1024 else {
+            failure = "请填写要共享的本机端口，范围为 1025–65535。"; return
         }
         if roomProtocol == .automatic { beginScaffolding(invite: .create(), port: port, playerName: playerName); return }
         if roomProtocol == .original && customPeers.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
@@ -45,11 +88,14 @@ import SwiftUI
         do { begin(invite: try PCLInvite.create(port: port), role: .host) } catch { failure = error.localizedDescription }
     }
     func join(playerName: String = "PCL Mac 玩家") {
+        guard !isActive else { return }
         do {
             if inviteText.uppercased().contains("U/") {
-                beginScaffolding(invite: try ScaffoldingInvite(inviteText), port: nil, playerName: playerName)
+                let invite = try ScaffoldingInvite(inviteText)
+                beginScaffolding(invite: invite, port: nil, playerName: playerName)
             } else if inviteText.contains(PCLRoomLink.prefix) {
-                let link = try PCLRoomLink(inviteText); begin(invite: link.invite, role: .guest, advertisedPeers: link.peers)
+                let link = try PCLRoomLink(inviteText)
+                begin(invite: link.invite, role: .guest, advertisedPeers: link.peers)
             } else {
                 let invite = try PCLInvite(inviteText); try invite.requireCustomNode()
                 guard !customPeers.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
@@ -57,8 +103,7 @@ import SwiftUI
                 }
                 begin(invite: invite, role: .guest)
             }
-        }
-        catch { failure = error.localizedDescription }
+        } catch { failure = error.localizedDescription }
     }
     private func beginScaffolding(invite: ScaffoldingInvite, port: UInt16?, playerName: String) {
         guard !isActive else { return }
@@ -70,7 +115,6 @@ import SwiftUI
         task = Task { [self] in
             do {
                 await cleanup?.value; try Task.checkCancellation()
-                if let port { try await LinkTCPProbe.requireGame(port: port) }
                 let peers: [String]
                 if let configured { peers = configured } else { peers = try PCLLinkDiscovery.scaffoldingPeers(await discovery.resolve()) }
                 let binaries = try await runtime.prepare { [weak self] progress in
@@ -97,7 +141,6 @@ import SwiftUI
         task = Task { [self] in
             do {
                 await cleanup?.value; try Task.checkCancellation()
-                if role == .host { try await LinkTCPProbe.requireGame(port: invite.port) }
                 let peers: [String]
                 if let configured { peers = configured }
                 else {
@@ -122,6 +165,47 @@ import SwiftUI
             if operation == id { task = nil }
         }
     }
+    func observeGameOutput(_ output: String) {
+        guard let port = MinecraftLauncher.openedLANPort(in: output) else { return }
+        detectedGamePort = port
+        publishDetectedPortIfReady()
+    }
+
+    func gameExited() { detectedGamePort = nil }
+
+    func publishEnteredPort() {
+        guard let port = UInt16(portText.trimmingCharacters(in: .whitespacesAndNewlines)), port > 1024 else {
+            failure = "请填写本次游戏显示的端口（1025–65535）。"
+            return
+        }
+        publishPort(port)
+    }
+
+    private var canPublishPort: Bool {
+        snapshot?.isHost == true && snapshot?.scaffolding == true && snapshot?.gamePort == 0 && !publishingPort
+    }
+
+    private func publishDetectedPortIfReady() {
+        guard canPublishPort, let port = detectedGamePort else { return }
+        detectedGamePort = nil
+        publishPort(port)
+    }
+
+    private func publishPort(_ port: UInt16) {
+        guard canPublishPort else { return }
+        let id = operation
+        publishingPort = true
+        failure = nil
+        Task {
+            do { try await scaffolding.publishGamePort(port) }
+            catch {
+                guard operation == id else { return }
+                publishingPort = false
+                if !(error is CancellationError) { failure = error.localizedDescription }
+            }
+        }
+    }
+
     private func receive(_ event: PCLRoomEvent) {
         switch event {
         case .progress(let text):
@@ -130,23 +214,25 @@ import SwiftUI
             if !text.isEmpty { logBuffer.append(text); logs = logBuffer.lines }
         case .connected(let value):
             snapshot = value; phase = .connected
+            if value.gamePort != 0 { publishingPort = false }
             message = value.reconnecting ? "连接恢复中" : (value.isHost ? (value.automatic && value.playerCount < 2 ? "房间已就绪，等待朋友加入" : "已创建房间") : "已加入房间")
+            publishDetectedPortIfReady()
         case .failed(let text):
             logBuffer.append(text); logs = logBuffer.lines
-            failure = text; phase = .failed; snapshot = nil; message = "联机已结束"
+            failure = text; phase = .failed; snapshot = nil; publishingPort = false; message = "联机已结束"
         }
     }
     func stop() {
         if isActive { logBuffer.append("已主动退出或取消联机。"); logs = logBuffer.lines }
-        operation = UUID(); task?.cancel(); task = nil
+        operation = UUID(); task?.cancel(); task = nil; publishingPort = false
         snapshot = nil; phase = .idle; message = "已退出联机"; failure = nil
         cleanup = Task { await session.stop(); await scaffolding.stop() }
     }
-    func requestLeave() {
+    func requestLeave(locale: Locale) {
         guard phase == .connected else { stop(); return }
-        let alert = NSAlert(); alert.messageText = snapshot?.isHost == true ? "关闭联机房间？" : "离开联机房间？"
-        alert.informativeText = snapshot?.isHost == true ? "房间中的朋友会断开连接，再次创建会生成新的邀请码。" : "将停止此房间的本机端口转发。"
-        alert.addButton(withTitle: "确定"); alert.addButton(withTitle: "取消")
+        let alert = NSAlert(); alert.messageText = InterfaceLanguage.text(snapshot?.isHost == true ? "关闭联机房间？" : "离开联机房间？", locale: locale)
+        alert.informativeText = InterfaceLanguage.text(snapshot?.isHost == true ? "房间中的朋友会断开连接，再次创建会生成新的邀请码。" : "将停止此房间的本机端口转发。", locale: locale)
+        alert.addButton(withTitle: InterfaceLanguage.text("确定", locale: locale)); alert.addButton(withTitle: InterfaceLanguage.text("取消", locale: locale))
         if alert.runModal() == .alertFirstButtonReturn { stop() }
     }
 }
@@ -161,7 +247,7 @@ struct MultiplayerView: View {
                 PCLCard(title: model.phase == .preparing ? "准备联机模块" : "正在连接房间") {
                     HStack(spacing: 20) {
                         ProgressView().controlSize(.large)
-                        Text(model.message).font(.custom("PCL English", size: 14))
+                        Text(store.text(model.message)).font(.custom("PCL English", size: 14))
                         Spacer()
                         Button("取消") { model.stop() }.buttonStyle(PCLActionStyle())
                     }.padding(.vertical, 20)
@@ -172,27 +258,39 @@ struct MultiplayerView: View {
                         if room.isHost {
                             Text("把邀请码发给朋友，让大家加入房间吧！").foregroundStyle(.secondary)
                             Text(room.inviteCode).font(.system(size: room.automatic && !room.scaffolding ? 12 : 22, design: .monospaced)).fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
-                            Button(room.scaffolding ? "复制大厅码" : "复制连接码") {
+                            Button(store.text(room.scaffolding ? "复制大厅码" : "复制连接码")) {
                                 NSPasteboard.general.clearContents()
                                 let launcher = room.scaffolding ? "PCL Mac版、PCL CE 或 HMCL" : (room.automatic ? "PCL Mac版" : "PCL 启动器")
                                 NSPasteboard.general.setString(room.scaffolding ? room.inviteCode : "在 \(launcher) 中输入连接码【\(room.inviteCode)】，即可加入联机房间！", forType: .string)
                             }.buttonStyle(PCLActionStyle(highlight: true))
-                            Text("房主游戏端口：\(String(room.gamePort))")
+                            if room.gamePort == 0 {
+                                Text("朋友可以先加入。用本启动器启动 Minecraft，在单人世界中选择“对局域网开放”，启动器会尝试自动识别端口。").foregroundStyle(.secondary)
+                                HStack {
+                                    TextField("也可填写游戏显示的端口", text: $model.portText).textFieldStyle(.roundedBorder).frame(maxWidth: 220)
+                                    Button(store.text(model.publishingPort ? "正在共享…" : "共享游戏")) { model.publishEnteredPort() }
+                                        .buttonStyle(PCLActionStyle()).disabled(model.publishingPort)
+                                }
+                            } else {
+                                Text("共享端口：\(String(room.gamePort))")
+                                Text("请让 Minecraft 世界或服务器在此端口监听，朋友就能通过转发地址访问。").foregroundStyle(.secondary)
+                            }
                             if room.automatic {
-                                Text(room.scaffolding ? "Windows 朋友可在 PCL CE、HMCL 等支持 Scaffolding 的启动器中输入大厅码。原版 PCL 使用另一套协议。" : "Mac 直连码供 Mac 版使用；原版 PCL 邀请码与 CE 大厅码属于其他联机模式。")
+                                Text(room.scaffolding ? (room.gamePort == 0 ? "使用 PCL CE 或 HMCL 的朋友可等游戏已共享后再加入。" : "Windows 朋友可在 PCL CE、HMCL 等支持 Scaffolding 的启动器中输入大厅码。") : "Mac 直连码供 Mac 版使用；原版 PCL 邀请码与 CE 大厅码属于其他联机模式。")
                                     .font(.custom("PCL English", size: 11)).foregroundStyle(.secondary)
                                 if !room.peers.contains(where: { !$0.isLocal }) {
                                     PCLHint(text: room.scaffolding ? "公共发现入口尚未连通，正在后台重试。大厅码已生成，但当前还不能确认朋友能够发现此大厅。" : "公共发现入口尚未连通，正在后台重试；同一局域网或可达 IPv6 的朋友仍可通过连接码尝试直连。", warning: true)
                                 }
                             }
+                        } else if room.localAddress.isEmpty {
+                            Text("房间已连接，正在等待房主共享世界。连接地址会自动出现。").foregroundStyle(.secondary)
                         } else {
-                            Text("进入 Minecraft 的多人游戏页面查找 PCL 联机房间，也可使用下方地址直接连接。")
+                            Text("房主开放世界或启动服务端后，可在 Minecraft 多人游戏中查找房间，或使用下方地址直接连接。")
                             HStack {
                                 Text(room.localAddress).font(.system(size: 18, design: .monospaced)).textSelection(.enabled)
                                 Button("复制连接地址") { NSPasteboard.general.clearContents(); NSPasteboard.general.setString(room.localAddress, forType: .string) }.buttonStyle(PCLActionStyle())
                             }
                         }
-                        HStack { Text("\(room.playerCount) 人"); Spacer(); Button(room.isHost ? "关闭房间" : "离开房间") { model.requestLeave() }.buttonStyle(PCLActionStyle()) }
+                        HStack { Text("\(room.playerCount) 人"); Spacer(); Button(store.text(room.isHost ? "关闭房间" : "离开房间")) { model.requestLeave(locale: store.interfaceLocale) }.buttonStyle(PCLActionStyle()) }
                     }.font(.custom("PCL English", size: 13))
                 }
                 PCLCard(title: "连接状态") {
@@ -211,39 +309,10 @@ struct MultiplayerView: View {
                     PCLCard(title: "大厅成员") { Text(room.playerNames.joined(separator: "、")).font(.custom("PCL English", size: 13)) }
                 }
             } else {
-                PCLCard(title: "创建房间") {
-                    VStack(alignment: .leading, spacing: 15) {
-                        HStack(spacing: 20) {
-                            PCLIcon("RoomCreate").frame(width: 40, height: 40).foregroundStyle(ClassicTheme.blue)
-                            VStack(alignment: .leading, spacing: 8) {
-                                Text("邀请朋友加入你的单人游戏。").font(.custom("PCL English", size: 15))
-                                Text("先启动 Minecraft 并进入单人世界，点击“对局域网开放”，再填写聊天中显示的端口，并保持世界运行。").foregroundStyle(.secondary)
-                            }
-                        }
-                        HStack {
-                            Text("游戏端口").frame(width: 85, alignment: .leading)
-                            TextField("游戏内开放后提示的端口", text: $model.portText).textFieldStyle(.roundedBorder).frame(maxWidth: 220)
-                            Button("创建房间") { model.create(playerName: store.preferences.playerName) }.buttonStyle(PCLActionStyle(highlight: true))
-                        }
-                    }.padding(.vertical, 15)
-                }
-                PCLCard(title: "加入房间") {
-                    VStack(alignment: .leading, spacing: 15) {
-                        HStack(spacing: 20) {
-                            PCLIcon("RoomJoin").frame(width: 40, height: 40).foregroundStyle(ClassicTheme.blue)
-                            Text("输入朋友发来的大厅码、Mac 直连码或原版 PCL 邀请码。").font(.custom("PCL English", size: 15))
-                        }
-                        HStack {
-                            TextField("粘贴完整连接码", text: $model.inviteText).textFieldStyle(.roundedBorder)
-                            Button("加入房间") { model.join(playerName: store.preferences.playerName) }.buttonStyle(PCLActionStyle(highlight: true))
-                        }
-                    }.padding(.vertical, 15)
-                }
-                PCLCard(title: "连接选项") {
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("默认自动发现并尝试 IPv6／IPv4 点对点连接，无需搭建服务器或填写节点。无法直连时由可用公共节点中继，具体取决于双方网络。")
-                        Button("联机设置") { store.settingsTab = "联机"; store.page = .settings }.buttonStyle(PCLActionStyle())
-                    }.font(.custom("PCL English", size: 13))
+                switch model.section {
+                case .create: createRoom
+                case .join: joinRoom
+                case .options: MultiplayerSettingsView(model: model)
                 }
             }
             if !model.logs.isEmpty {
@@ -257,17 +326,59 @@ struct MultiplayerView: View {
             }
         }
     }
+    private var createRoom: some View {
+        PCLCard(title: "创建房间") {
+            VStack(alignment: .leading, spacing: 15) {
+                HStack(spacing: 20) {
+                    PCLIcon("RoomCreate").frame(width: 40, height: 40).foregroundStyle(ClassicTheme.blue)
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("建立房间网络并邀请朋友。").font(.custom("PCL English", size: 15))
+                        Text(model.roomProtocol == .automatic
+                            ? "可以留空直接建房。朋友加入后，再打开 Minecraft 的局域网世界。仅向受信任的朋友分享连接码。"
+                            : "请填写游戏显示的端口，或先填写固定端口，再用同一端口开放世界。仅向受信任的朋友分享连接码。").foregroundStyle(.secondary)
+                    }
+                }
+                HStack {
+                    Text(store.text(model.roomProtocol == .automatic ? "端口（可选）" : "共享端口")).frame(width: 85, alignment: .leading)
+                    TextField(store.text(model.roomProtocol == .automatic ? "留空先建房" : "例如 25565"), text: $model.portText).textFieldStyle(.roundedBorder).frame(maxWidth: 220)
+                    Button("创建房间") { model.create(playerName: store.preferences.playerName) }.buttonStyle(PCLActionStyle(highlight: true))
+                }
+            }.padding(.vertical, 15)
+        }
+    }
+
+    private var joinRoom: some View {
+        PCLCard(title: "加入房间") {
+            VStack(alignment: .leading, spacing: 15) {
+                HStack(spacing: 20) {
+                    PCLIcon("RoomJoin").frame(width: 40, height: 40).foregroundStyle(ClassicTheme.blue)
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("输入朋友发来的大厅码、Mac 直连码或原版 PCL 邀请码。").font(.custom("PCL English", size: 15))
+                        Text("可以在 Minecraft 未安装或未运行时加入，准备好后再打开游戏。").foregroundStyle(.secondary)
+                    }
+                }
+                HStack {
+                    TextField("粘贴完整连接码", text: $model.inviteText).textFieldStyle(.roundedBorder)
+                    Button("加入房间") { model.join(playerName: store.preferences.playerName) }.buttonStyle(PCLActionStyle(highlight: true))
+                }
+            }.padding(.vertical, 15)
+        }
+    }
+
 }
 
 struct MultiplayerSettingsView: View {
     @ObservedObject var model: MultiplayerState
+    @Environment(\.locale) private var locale
     var body: some View {
         Group {
             PCLCard(title: "连接选项") {
                 HStack(spacing: 20) {
                     Text("创建模式").frame(width: 110, alignment: .leading)
-                    PCLComboBox(title: "创建模式", selection: $model.roomProtocol, options: MultiplayerState.RoomProtocol.allCases.map { .init(title: $0.rawValue, value: $0) }).frame(height: 28)
+                    PCLComboBox(title: "创建模式", selection: $model.roomProtocol,
+                        options: MultiplayerState.RoomProtocol.allCases.map { .init(title: $0.rawValue, value: $0) }).frame(height: 28)
                 }
+                Text(InterfaceLanguage.text(model.roomProtocol.connectionHint, locale: locale)).foregroundStyle(.secondary)
                 HStack(spacing: 20) {
                     Text("模式").frame(width: 110, alignment: .leading)
                     PCLComboBox(title: "模式", selection: $model.latencyFirst, options: [.init(title: "优先直连", value: false), .init(title: "优先低延迟", value: true)]).frame(height: 28)

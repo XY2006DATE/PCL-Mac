@@ -33,7 +33,8 @@ public enum JavaDiscovery {
         let fm = FileManager.default
         var candidates: [URL] = []
         let user = fm.homeDirectoryForCurrentUser
-        let roots = [URL(fileURLWithPath: "/Library/Java/JavaVirtualMachines"), user.appendingPathComponent("Library/Java/JavaVirtualMachines")]
+        let roots = [URL(fileURLWithPath: "/Library/Java/JavaVirtualMachines"),
+                     user.appendingPathComponent("Library/Java/JavaVirtualMachines"), JavaInstaller.directory]
         for root in roots {
             for bundle in (try? fm.contentsOfDirectory(at: root, includingPropertiesForKeys: nil, options: [.skipsHiddenFiles])) ?? [] {
                 candidates.append(bundle.appendingPathComponent("Contents/Home/bin/java"))
@@ -128,11 +129,16 @@ public struct VersionJavaSelection: Hashable, Sendable {
         default: java = best(runtimes) ?? fallback
         }
         guard let java else {
-            if requiredArchitecture == "x86_64" { throw LauncherError.invalidJava("此旧版游戏使用 Intel 原生库，请安装或导入 Intel（x86_64）版 Java \(requiredMajorVersion)。") }
+            if let requiredArchitecture {
+                throw LauncherError.invalidJava("此版本需要 Java \(requiredMajorVersion)（\(requiredArchitecture)），请安装或导入符合设置的 Java。")
+            }
             throw LauncherError.invalidJava("未找到符合此版本设置的 Java，请选择已安装的 Java。")
         }
         if let requiredArchitecture, java.architecture != requiredArchitecture {
-            throw LauncherError.invalidJava("此旧版游戏使用 Intel 原生库，请选择 x86_64 版 Java \(requiredMajorVersion)，当前所选为 \(java.architecture)。")
+            throw LauncherError.invalidJava("此版本需要 \(requiredArchitecture) 版 Java，当前所选为 \(java.architecture)。")
+        }
+        guard java.majorVersion >= requiredMajorVersion else {
+            throw LauncherError.invalidJava("此版本需要 Java \(requiredMajorVersion)，当前选择的是 Java \(java.majorVersion)。")
         }
         return java
     }

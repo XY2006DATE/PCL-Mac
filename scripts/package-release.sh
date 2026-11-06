@@ -59,7 +59,7 @@ PCL Mac版 $version（build $build）
 
 将“PCL Mac版.app”拖到“Applications（应用程序）”后启动。
 要求 macOS 14 或更新版本，兼容 Apple Silicon 和 Intel。
-游戏需要自行安装匹配 Minecraft 版本与架构的 Java。
+游戏需要匹配 Minecraft 版本和架构的 Java。缺少时可由启动器下载。
 
 $signing_note
 若首次打开被系统拦截，请先确认安装包来自以下仓库，核对 SHA-256，

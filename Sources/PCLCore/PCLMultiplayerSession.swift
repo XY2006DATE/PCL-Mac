@@ -75,7 +75,6 @@ public actor PCLMultiplayerSession {
             let hints = PCLLinkDiscovery.directPeers(port: listener)
             shareCode = try PCLRoomLink(invite: invite, peers: Array((hints + peers).prefix(8))).code
         } else { shareCode = invite.code }
-        if role == .host { try await LinkTCPProbe.requireGame(port: invite.port) }
         try check(operation)
         guard FileManager.default.isExecutableFile(atPath: supervisor.path) else { throw PCLLinkError.invalid("缺少联机进程管理模块，请使用完整的 Mac 应用构建。") }
         let folder = try LinkSessionStorage.create(in: directory)

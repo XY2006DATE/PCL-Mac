@@ -170,9 +170,14 @@ final class InstallTaskProgressTests: XCTestCase {
         defer { session.invalidateAndCancel() }
         let monitor = monitor()
         let request = URLRequest(url: URL(string: "https://telemetry-download.invalid/file")!)
+        let transferred = expectation(description: "reported file bytes and expected length")
+        let size = Int64(TelemetryDownloadFixtureProtocol.body.count)
         let (file, response) = try await InstallProgressContext.$current.withValue(monitor) {
-            try await PCLHTTPS.download(for: request, session: session)
+            try await PCLHTTPS.download(for: request, session: session) { received, expected in
+                if received == size && expected == size { transferred.fulfill() }
+            }
         }
+        await fulfillment(of: [transferred], timeout: 1)
         defer { try? FileManager.default.removeItem(at: file) }
         XCTAssertEqual((response as? HTTPURLResponse)?.statusCode, 200)
         XCTAssertEqual(try Data(contentsOf: file), TelemetryDownloadFixtureProtocol.body)

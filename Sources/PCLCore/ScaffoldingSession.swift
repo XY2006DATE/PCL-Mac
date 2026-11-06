@@ -10,19 +10,24 @@ public actor ScaffoldingSession {
     private var nodeMaintenance: Task<Void, Never>?
     private var folder: URL?
     private var generation = UUID()
+    private var hostRuntime: (rpc: UInt16, control: UInt16, listener: UInt16, cli: URL)?
+    private var hostedPort: UInt16 = 0
+    private var guestForward: (remote: UInt16, local: UInt16)?
+    private var publishing: UUID?
     public init(directory: URL, supervisor: URL) { self.directory = directory; self.supervisor = supervisor }
 
+    /// A host supplies a fixed port or zero to open a lobby before its game is available. Guests pass nil.
     public func open(invite: ScaffoldingInvite, gamePort: UInt16?, peers: [String], latencyFirst: Bool,
                      playerName: String, machineID: String, binaries: EasyTierRuntime.Binaries,
                      event: @escaping @Sendable (PCLRoomEvent) -> Void) async throws {
         stop(); let operation = generation
         try Task.checkCancellation()
         let isHost = gamePort != nil
-        if let gamePort { guard gamePort > 1024 else { throw PCLLinkError.invalid("游戏端口无效。") }; try await LinkTCPProbe.requireGame(port: gamePort) }
+        if let gamePort, gamePort != 0, gamePort <= 1024 { throw PCLLinkError.invalid("房主共享端口无效。") }
         try check(operation)
         let nodes = try PCLLinkPeers.parse(peers.joined(separator: ","), maximum: 16)
         let ports = LinkPortReservations(excluding: Set([gamePort ?? 0])); defer { ports.release() }
-        let rpc = try ports.reserve(), listener = try ports.reserve(), control = try ports.reserve(), local = try ports.reserve()
+        let rpc = try ports.reserve(), listener = try ports.reserve(), control = try ports.reserve()
         let name = String(playerName.trimmingCharacters(in: .whitespacesAndNewlines).prefix(64))
         let profile = ScaffoldingProfile(name: name.isEmpty ? "PCL Mac 玩家" : name, machine_id: machineID, vendor: "PCL Mac / EasyTier \(EasyTierRuntime.version)", kind: isHost ? "HOST" : nil)
         guard FileManager.default.isExecutableFile(atPath: supervisor.path) else { throw PCLLinkError.invalid("缺少联机进程管理模块，请使用完整应用构建。") }
@@ -65,7 +70,6 @@ public actor ScaffoldingSession {
             }
             try check(operation)
             guard !initial.isEmpty else { throw PCLLinkError.invalid(isHost ? "联机模块未能就绪，请查看日志。" : "暂时无法找到房主。请确认大厅码正确、房主仍在线；公共发现服务或当前网络可能暂时不可用。") }
-            var remoteGamePort = gamePort ?? 0
             var profiles = isHost ? [profile] : []
             if let target {
                 guard let remoteControl = UInt16(target.hostname.split(separator: "-").last ?? ""), remoteControl > 1024,
@@ -79,23 +83,26 @@ public actor ScaffoldingSession {
                     catch { try check(operation); try await Task.sleep(nanoseconds: 700_000_000) }
                 }
                 guard let result, result.count == 2 else { throw PCLLinkError.invalid("已发现房主，但未能完成大厅控制连接。部分 PCL CE 构建仅允许直连；连接公共节点并不代表双方已打洞成功。请保持房间开启后重新加入。") }
-                remoteGamePort = (UInt16(result[0]) << 8) | UInt16(result[1])
-                guard remoteGamePort > 1024 else { throw PCLLinkError.invalid("房主尚未对局域网开放游戏。") }
-                for proto in ["tcp", "udp"] { try await Self.forward(cli: binaries.cli, rpc: rpc, proto: proto, local: local, remote: remoteGamePort) }
+                let remotePort = try Self.decodeGamePort(result)
                 profiles = try await Self.heartbeat(port: control, profile: profile)
-                try check(operation); try await LinkTCPProbe.waitForForward(port: local)
-                advertisement = try? LinkLANAdvertisement(port: local)
+                try check(operation)
+                if remotePort != 0 {
+                    try await prepareForward(to: remotePort, cli: binaries.cli, rpc: rpc, control: control, operation: operation)
+                }
             }
             try check(operation)
-            event(.connected(Self.snapshot(invite: invite, isHost: isHost, gamePort: remoteGamePort, local: local, peers: initial, names: profiles.map(\.name), reconnecting: false)))
-            let selectedGamePort = remoteGamePort
+            if let gamePort {
+                hostRuntime = (rpc, control, listener, binaries.cli)
+                hostedPort = gamePort
+            }
+            event(.connected(snapshot(invite: invite, isHost: isHost, peers: initial, names: profiles.map(\.name), reconnecting: false)))
             monitor = Task { [weak self] in
                 var missed = 0
                 while !Task.isCancelled {
                     do {
                         try await Task.sleep(nanoseconds: 2_000_000_000)
                         guard let self else { return }
-                        let healthy = try await self.poll(operation: operation, invite: invite, isHost: isHost, gamePort: selectedGamePort, local: local, control: control, rpc: rpc, profile: profile, binaries: binaries, event: event)
+                        let healthy = try await self.poll(operation: operation, invite: invite, isHost: isHost, control: control, rpc: rpc, profile: profile, binaries: binaries, event: event)
                         missed = healthy ? 0 : missed + 1
                     } catch is CancellationError { return }
                     catch { missed += 1 }
@@ -106,8 +113,46 @@ public actor ScaffoldingSession {
             }
         } catch { if operation == generation { stop() }; throw error }
     }
+    public func publishGamePort(_ port: UInt16) async throws {
+        guard let hostRuntime, let server, core?.isRunning == true else {
+            throw PCLLinkError.invalid("房主大厅尚未就绪。")
+        }
+        guard port > 1024, ![hostRuntime.rpc, hostRuntime.control, hostRuntime.listener].contains(port) else {
+            throw PCLLinkError.invalid("此端口不能用于共享游戏。")
+        }
+        guard hostedPort == 0, publishing == nil else { throw PCLLinkError.invalid("此大厅已设置共享端口。") }
+        let operation = generation
+        publishing = operation
+        defer { if publishing == operation { publishing = nil } }
+        try await LinkTCPProbe.requireGame(port: port)
+        try check(operation)
+        let args = ["-p", "127.0.0.1:\(hostRuntime.rpc)", "whitelist"]
+        let current = String(hostRuntime.control)
+        let shared = "\(port),\(current)"
+        do {
+            _ = try await LinkCommand.run(hostRuntime.cli, args + ["set-udp", shared], timeout: 10)
+            try check(operation)
+            _ = try await LinkCommand.run(hostRuntime.cli, args + ["set-tcp", shared], timeout: 10)
+            try check(operation)
+        } catch {
+            if generation == operation {
+                // Keep the control channel reachable if either update failed.
+                let cli = hostRuntime.cli
+                await Task.detached {
+                    for proto in ["tcp", "udp"] {
+                        _ = try? await LinkCommand.run(cli, args + ["set-\(proto)", current], timeout: 5)
+                    }
+                }.value
+            }
+            throw error
+        }
+        server.publishGamePort(port)
+        hostedPort = port
+    }
+
     public func stop() {
         generation = UUID(); monitor?.cancel(); monitor = nil
+        hostRuntime = nil; hostedPort = 0; guestForward = nil; publishing = nil
         nodeMaintenance?.cancel(); nodeMaintenance = nil
         advertisement?.stop(); advertisement = nil; server?.stop(); server = nil; core?.stop(); core = nil
         if let folder { try? FileManager.default.removeItem(at: folder) }; folder = nil
@@ -116,7 +161,7 @@ public actor ScaffoldingSession {
     private func end(_ operation: UUID, event: @Sendable (PCLRoomEvent) -> Void) {
         guard generation == operation else { return }; stop(); event(.failed("大厅连接已中断，请检查网络后重新加入。"))
     }
-    private func poll(operation: UUID, invite: ScaffoldingInvite, isHost: Bool, gamePort: UInt16, local: UInt16, control: UInt16, rpc: UInt16,
+    private func poll(operation: UUID, invite: ScaffoldingInvite, isHost: Bool, control: UInt16, rpc: UInt16,
                       profile: ScaffoldingProfile, binaries: EasyTierRuntime.Binaries, event: @Sendable (PCLRoomEvent) -> Void) async throws -> Bool {
         try check(operation); guard core?.isRunning == true else { throw PCLLinkError.invalid("联机模块已退出。") }
         let peers = try await PCLMultiplayerSession.queryPeers(binaries.cli, port: rpc)
@@ -126,7 +171,12 @@ public actor ScaffoldingSession {
         } else { profiles = try await Self.heartbeat(port: control, profile: profile) }
         try check(operation)
         let healthy = isHost || peers.contains(where: { !$0.isLocal && $0.hostname.hasPrefix("scaffolding-mc-server-") })
-        event(.connected(Self.snapshot(invite: invite, isHost: isHost, gamePort: gamePort, local: local, peers: peers, names: profiles.map(\.name), reconnecting: !healthy)))
+        if !isHost, healthy, guestForward == nil {
+            let port = try Self.decodeGamePort(await ScaffoldingRPC.call(port: control, type: "c:server_port"))
+            try check(operation)
+            if port != 0 { try await prepareForward(to: port, cli: binaries.cli, rpc: rpc, control: control, operation: operation) }
+        }
+        event(.connected(snapshot(invite: invite, isHost: isHost, peers: peers, names: profiles.map(\.name), reconnecting: !healthy)))
         return healthy
     }
     private static func heartbeat(port: UInt16, profile: ScaffoldingProfile) async throws -> [ScaffoldingProfile] {
@@ -139,8 +189,41 @@ public actor ScaffoldingSession {
     private static func forward(cli: URL, rpc: UInt16, proto: String, local: UInt16, remote: UInt16) async throws {
         _ = try await LinkCommand.run(cli, ["-p", "127.0.0.1:\(rpc)", "port-forward", "add", proto, "127.0.0.1:\(local)", "10.114.51.41:\(remote)"], timeout: 15)
     }
-    private static func snapshot(invite: ScaffoldingInvite, isHost: Bool, gamePort: UInt16, local: UInt16, peers: [PCLLinkPeer], names: [String], reconnecting: Bool) -> PCLRoomSnapshot {
-        var value = PCLRoomSnapshot(isHost: isHost, inviteCode: invite.code, gamePort: gamePort, localAddress: "127.0.0.1:\(local)", peers: peers, reconnecting: reconnecting)
+    private static func decodeGamePort(_ bytes: Data) throws -> UInt16 {
+        guard bytes.count == 2 else { throw PCLLinkError.invalid("房主共享端口响应无效。") }
+        let port = (UInt16(bytes[0]) << 8) | UInt16(bytes[1])
+        guard port == 0 || port > 1024 else { throw PCLLinkError.invalid("房主共享端口无效。") }
+        return port
+    }
+
+    private func prepareForward(to port: UInt16, cli: URL, rpc: UInt16, control: UInt16, operation: UUID) async throws {
+        let reservations = LinkPortReservations(excluding: [port, rpc, control])
+        let local = try reservations.reserve()
+        reservations.release()
+        do {
+            for proto in ["tcp", "udp"] {
+                try await Self.forward(cli: cli, rpc: rpc, proto: proto, local: local, remote: port)
+                try check(operation)
+            }
+            try await LinkTCPProbe.waitForForward(port: local)
+            try check(operation)
+        } catch {
+            if generation == operation {
+                for proto in ["tcp", "udp"] {
+                    _ = try? await LinkCommand.run(cli, ["-p", "127.0.0.1:\(rpc)", "port-forward", "remove", proto,
+                                                        "127.0.0.1:\(local)", "10.114.51.41:\(port)"], timeout: 5)
+                }
+            }
+            throw error
+        }
+        guestForward = (port, local)
+        advertisement = try? LinkLANAdvertisement(port: local)
+    }
+
+    private func snapshot(invite: ScaffoldingInvite, isHost: Bool, peers: [PCLLinkPeer], names: [String], reconnecting: Bool) -> PCLRoomSnapshot {
+        let gamePort = isHost ? hostedPort : (guestForward?.remote ?? 0)
+        let address = guestForward.map { "127.0.0.1:\($0.local)" } ?? ""
+        var value = PCLRoomSnapshot(isHost: isHost, inviteCode: invite.code, gamePort: gamePort, localAddress: address, peers: peers, reconnecting: reconnecting)
         value.automatic = true; value.scaffolding = true; value.playerNames = names; return value
     }
     static func configuration(invite: ScaffoldingInvite, gamePort: UInt16?, control: UInt16, listener: UInt16, peers: [String], latencyFirst: Bool, machineID: String) -> String {
@@ -149,7 +232,7 @@ public actor ScaffoldingSession {
             return String(data: try! encoder.encode(value), encoding: .utf8)!
         }
         let host = gamePort != nil
-        let allowed = gamePort.map { "[\"\($0)\", \"\(control)\"]" } ?? "[\"0\"]"
+        let allowed = gamePort.map { $0 == 0 ? "[\"\(control)\"]" : "[\"\($0)\", \"\(control)\"]" } ?? "[\"0\"]"
         var text = """
         instance_name = "pcl-mac-scaffolding"
         hostname = \(quote(host ? "scaffolding-mc-server-\(control)" : machineID))

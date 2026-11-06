@@ -566,6 +566,10 @@ import PCLCore
         let changedExtras = state.extraComponentsChanged
         let rebuildExtraLaunch = state.selectedOptiFine != state.originalOptiFine || state.selectedLiteLoader != state.originalLiteLoader
         let useExtraWorkflow = changedExtras || (changedComponents && (originalExtras.optiFine != nil || originalExtras.liteLoader != nil || (state.originalLoader?.kind == .fabric && originalExtras.optiFabric != nil) || extraSelection.optiFine != nil || extraSelection.liteLoader != nil || extraSelection.optiFabric != nil))
+        if (changedComponents || rebuildExtraLaunch) && !minecraftDownloadsAvailable {
+            state.error = minecraftDownloadRegionMessage
+            return
+        }
         let selectedMainLoader = modificationSelectedLoader
         let keepOriginalAPI = state.keepOriginalFabricAPI
         let isolate = profileSettings(for: version).isolateGameDirectory
@@ -590,7 +594,7 @@ import PCLCore
             runModdedInstallation(profileID: finalName, directory: directory, summary: "修改版本组件", selectVersionOnSuccess: wasSelected,
                 successPage: .versionSettings, successMessage: "版本修改完成", checkCancellationAfterOperation: false) { [self] progress in
                 guard let remote else { throw MinecraftInstallError.invalidMetadata("未找到 Minecraft 元数据") }
-                let java = try await installationJava(minecraftVersion: minecraft, metadataURL: remote.url)
+                let java = try await installationJava(minecraftVersion: minecraft, metadataURL: remote.url, progress: progress)
                 try await extraComponentsInstaller.modify(version: version, minecraft: remote, minecraftID: minecraft,
                     loader: selectedMainLoader, selection: extraSelection, fabricAPI: selectedAPI, keepOriginalFabricAPI: keepOriginalAPI,
                     originalFabricAPI: originalAPI, originalExtras: originalExtras, newName: finalName, isolate: isolate,
@@ -612,7 +616,7 @@ import PCLCore
                 guard !FileManager.default.fileExists(atPath: temporary.path) else { throw VersionManagementError.destinationExists }
                 ownsTemporary = true
                 if let kind {
-                    let java = try await installationJava(minecraftVersion: minecraft, metadataURL: remote.url)
+                    let java = try await installationJava(minecraftVersion: minecraft, metadataURL: remote.url, progress: progress)
                     try await modLoaderInstaller.install(kind: kind, version: ModLoaderVersion(kind: kind, minecraftVersion: minecraft, version: loaderVersion),
                         minecraftVersion: remote, gameDirectory: directory, profileID: temporaryID, javaExecutable: java.executable, progress: { publication.preparation($0) })
                 } else { try await installer.install(version: remote, gameDirectory: directory, profileID: temporaryID, progress: { publication.preparation($0) }) }

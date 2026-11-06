@@ -117,8 +117,8 @@ public final class InstallTaskMonitor: @unchecked Sendable {
         return makeSnapshot(at: now())
     }
 
-    public func begin(_ id: String, message: String? = nil) {
-        mutateStage(id, state: .running, fraction: nil, message: message, force: true)
+    public func begin(_ id: String, message: String? = nil, resetFraction: Bool = false) {
+        mutateStage(id, state: .running, fraction: nil, message: message, force: true, resetFraction: resetFraction)
     }
 
     public func update(_ id: String, fraction: Double, message: String? = nil) {
@@ -187,15 +187,17 @@ public final class InstallTaskMonitor: @unchecked Sendable {
         }
     }
 
-    private func mutateStage(_ id: String, state: InstallStageState, fraction: Double?, message: String?, force: Bool) {
+    private func mutateStage(_ id: String, state: InstallStageState, fraction: Double?, message: String?, force: Bool,
+                             resetFraction: Bool = false) {
         change(force: force) {
             guard !finished, let index = stages.firstIndex(where: { $0.id == id }) else { return false }
             let previous = stages[index]
             // Completion/cancellation is terminal. A delayed download callback
             // cannot turn a blue checkmark back into a running percentage.
             guard previous.state != .completed && previous.state != .failed && previous.state != .cancelled else { return false }
+            let startingFraction = resetFraction ? 0 : previous.fraction
             stages[index] = InstallStageProgress(id: previous.id, title: previous.title, state: state,
-                fraction: max(previous.fraction, fraction.map(InstallStageProgress.bounded) ?? previous.fraction),
+                fraction: max(startingFraction, fraction.map(InstallStageProgress.bounded) ?? startingFraction),
                 weight: previous.weight, isVisible: previous.isVisible)
             if let message { self.message = message }
             if stages.allSatisfy({ $0.state == .completed || $0.state == .failed || $0.state == .cancelled }) {

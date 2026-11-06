@@ -12,9 +12,9 @@ struct LauncherView: View {
                 HStack(spacing: 0) {
                     Group {
                         if store.page == .launch { ClassicLaunchPanel() }
-                        else { ClassicSectionSidebar() }
+                        else { ClassicSectionSidebar(multiplayer: store.multiplayerState) }
                     }
-                    .frame(width: showsInstallProgress || store.page == .downloads || store.page == .versionSettings || store.page == .settings || store.page == .multiplayer ? 200 : min(370, max(300, geometry.size.width * 0.342)))
+                    .frame(width: sidebarWidth(for: geometry.size.width))
                     Rectangle().fill(Color.pclBlue.opacity(0.08)).frame(width: 1)
                     ZStack {
                         ClassicTheme.background
@@ -50,7 +50,7 @@ struct LauncherView: View {
                     }
                     .overlay(alignment: .bottomTrailing) {
                         VStack(alignment: .trailing, spacing: 0) {
-                            if store.page == .downloads && store.communityState.kind == nil && store.currentRemoteSelection != nil {
+                            if store.page == .downloads && store.minecraftDownloadsAvailable && store.communityState.kind == nil && store.currentRemoteSelection != nil {
                                 PCLInstallButton()
                             }
                             if store.showsClassicInstallProgress && store.page != .activity {
@@ -77,10 +77,21 @@ struct LauncherView: View {
         .alert("操作未完成", isPresented: Binding(get: { store.errorMessage != nil }, set: { if !$0 { store.errorMessage = nil } })) {
             Button("好的", role: .cancel) { store.errorMessage = nil }
             Button("查看日志") { store.errorMessage = nil; store.page = .activity }
-        } message: { Text(store.errorMessage ?? "") }
+        } message: { Text(store.text(store.errorMessage ?? "")) }
         .onChange(of: store.page) { _, page in
             store.search = ""
-            if page == .downloads && store.communityState.kind == nil && store.remoteVersions.isEmpty { Task { await store.fetchManifest() } }
+            if page == .downloads && store.minecraftDownloadsAvailable && store.communityState.kind == nil && store.remoteVersions.isEmpty {
+                Task { await store.fetchManifest() }
+            }
+        }
+    }
+
+    private func sidebarWidth(for windowWidth: CGFloat) -> CGFloat {
+        switch store.page {
+        case .launch, .library:
+            return min(370, max(300, windowWidth * 0.342))
+        default:
+            return 200
         }
     }
 
@@ -101,7 +112,7 @@ struct LauncherView: View {
             PCLCard(title: "任务") {
                 HStack(spacing: 10) {
                     Circle().fill(store.isGameRunning ? Color.green : Color.pclBlue).frame(width: 6, height: 6)
-                    Text(store.statusMessage).font(.custom("PCL English", size: 13))
+                    Text(store.text(store.statusMessage)).font(.custom("PCL English", size: 13))
                     Spacer()
                     if store.isGameRunning {
                         Button("结束游戏") { store.stopGame() }.buttonStyle(PCLActionStyle())
@@ -198,14 +209,25 @@ struct LauncherView: View {
                         Button { Task { await store.refreshLocal() } } label: { PCLIcon("Refresh").frame(width: 14, height: 14) }
                             .buttonStyle(PCLActionStyle()).disabled(store.scanning).help("重新搜索 Java")
                     }
+                    HStack(spacing: 15) {
+                        settingLabel("Java 下载源")
+                        PCLComboBox(title: "Java 下载源", selection: Binding(
+                            get: { store.preferences.javaDownloadSource ?? .zulu },
+                            set: { store.preferences.javaDownloadSource = $0 }
+                        ), options: JavaInstaller.Source.allCases.map { .init(title: $0.rawValue + " 优先", value: $0) })
+                        .frame(height: 28)
+                        .help("首选源下载失败时自动尝试另一个官方源")
+                    }
                     HStack(spacing: 12) {
                         Spacer().frame(width: 103)
+                        Button("下载 Java \(store.selectedVersion?.requiredJava ?? 21)") { store.installJava() }
+                            .buttonStyle(PCLActionStyle(highlight: true)).disabled(store.isBusy || store.isGameRunning || store.scanning)
                         Button("手动导入 Java") { store.chooseJava() }.buttonStyle(PCLActionStyle())
                     }
                     if let java = store.selectedJava {
                         Text("将会使用：\(java.displayName)\n\(java.executable.path)").font(.custom("PCL English", size: 10)).foregroundStyle(.secondary).lineLimit(2).textSelection(.enabled)
                     } else {
-                        Text("未找到可用的 Java，请安装后重新搜索，或手动导入。").font(.custom("PCL English", size: 11)).foregroundStyle(.orange)
+                        Text("未找到可用的 Java。可以直接下载，或手动导入已有 Java。").font(.custom("PCL English", size: 11)).foregroundStyle(.orange)
                     }
                 }
             }
@@ -219,53 +241,67 @@ struct LauncherView: View {
     private var aboutPage: some View {
         Group {
             PCLCard(title: "关于") {
-                VStack(spacing: 5) {
-                    HStack(spacing: 10) {
-                        PCLResourceImage(name: "LTCat", extensionName: "jpg", fallback: "Account").frame(width: 34, height: 34).clipShape(Circle())
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("龙腾猫跃").font(.custom("PCL English", size: 14))
-                            Text("Plain Craft Launcher 的开发者！").font(.custom("PCL English", size: 11)).foregroundStyle(.secondary)
-                        }
-                        Spacer()
-                        Link("赞助 PCL !", destination: URL(string: "https://meloong.com/afd/a/LTCat")!)
-                            .buttonStyle(PCLActionStyle(highlight: true))
-                    }.frame(minHeight: 45)
-                    HStack(spacing: 10) {
-                        PCLResourceImage(name: "HerobrineXia", fallback: "Account").frame(width: 34, height: 34).clipShape(Circle())
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("HerobrineXia").font(.custom("PCL English", size: 14))
-                            Text("原项目的协力开发者！").font(.custom("PCL English", size: 11)).foregroundStyle(.secondary)
-                        }
-                        Spacer()
-                    }.frame(minHeight: 45)
-                    HStack(spacing: 10) {
-                        PCLResourceImage(name: "Logo", fallback: "Vanilla").frame(width: 34, height: 34)
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Plain Craft Launcher (PCL) macOS").font(.custom("PCL English", size: 14))
-                            Text("当前版本：\(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.1.0")，第三方独立改编版")
-                                .font(.custom("PCL English", size: 11)).foregroundStyle(.secondary)
-                        }
-                        Spacer()
-                    }.frame(minHeight: 45)
-                }
-            }
-            PCLCard(title: "法律信息") {
-                VStack(alignment: .leading, spacing: 13) {
-                    Text("本应用是第三方基于 PCL 独立进行二次创作的产物，并非原作者发布的官方 macOS 版本。")
-                        .font(.custom("PCL English", size: 13)).lineSpacing(5)
-                    HStack(spacing: 12) {
-                        Button("PCL 分发有限许可") {
-                            if let license = Bundle.main.url(forResource: "LICENCE", withExtension: nil) { NSWorkspace.shared.open(license) }
-                        }.buttonStyle(PCLActionStyle())
-                        Link("原项目开源代码", destination: URL(string: "https://github.com/Meloong-Git/PCL")!).buttonStyle(PCLActionStyle())
-                        Link("EasyTier 源码与许可", destination: URL(string: "https://github.com/EasyTier/EasyTier/tree/v2.6.4")!).buttonStyle(PCLActionStyle())
+                HStack(spacing: 10) {
+                    PCLResourceImage(name: "Logo", fallback: "Vanilla").frame(width: 34, height: 34)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("PCL Mac版").font(.custom("PCL English", size: 14))
+                        Text("版本 \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.1.0") · 第三方独立改编")
+                            .font(.custom("PCL English", size: 11)).foregroundStyle(.secondary)
                     }
-                    Text("Minecraft 及相关商标属于各自权利人。本应用未与 Mojang 或 Microsoft 建立关联。")
-                        .font(.custom("PCL English", size: 11)).foregroundStyle(.secondary).lineSpacing(4)
-                }
+                }.frame(minHeight: 45)
+            }
+            PCLCard(title: "鸣谢") {
+                HStack(spacing: 10) {
+                    PCLResourceImage(name: "LTCat", extensionName: "jpg", fallback: "Account").frame(width: 34, height: 34).clipShape(Circle())
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("龙腾猫跃").font(.custom("PCL English", size: 14))
+                        Text("Plain Craft Launcher 原作者").font(.custom("PCL English", size: 11)).foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    Link("赞助 PCL", destination: URL(string: "https://meloong.com/afd/a/LTCat")!)
+                        .buttonStyle(PCLActionStyle(highlight: true))
+                }.frame(minHeight: 45)
+                HStack(spacing: 10) {
+                    PCLResourceImage(name: "XY2006DATE", fallback: "Account").frame(width: 34, height: 34).clipShape(RoundedRectangle(cornerRadius: 6))
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("XY2006DATE").font(.custom("PCL English", size: 14))
+                        Text("PCL Mac 版开发与维护").font(.custom("PCL English", size: 11)).foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    Link("查看 GitHub", destination: URL(string: "https://github.com/XY2006DATE")!)
+                        .buttonStyle(PCLActionStyle())
+                }.frame(minHeight: 45)
+            }
+            PCLCard(title: "许可与版权声明") {
+                Grid(alignment: .topLeading, horizontalSpacing: 20, verticalSpacing: 14) {
+                    GridRow {
+                        Text("Plain Craft Launcher")
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("PCL Mac 版是基于 Plain Craft Launcher 的第三方独立改编。")
+                            HStack(spacing: 12) {
+                                Link("查看来源网站", destination: URL(string: "https://github.com/Meloong-Git/PCL")!)
+                                Button("查看许可文档") {
+                                    if let license = Bundle.main.url(forResource: "LICENCE", withExtension: nil) { NSWorkspace.shared.open(license) }
+                                }
+                            }.buttonStyle(PCLActionStyle())
+                        }
+                    }
+                    GridRow {
+                        Text("EasyTier")
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("联机运行组件，首次使用时从官方发布下载。")
+                            HStack(spacing: 12) {
+                                Link("查看来源网站", destination: URL(string: "https://github.com/EasyTier/EasyTier/tree/v\(EasyTierRuntime.version)")!)
+                                Link("查看许可文档", destination: URL(string: "https://github.com/EasyTier/EasyTier/blob/v\(EasyTierRuntime.version)/LICENSE")!)
+                            }.buttonStyle(PCLActionStyle())
+                        }
+                    }
+                }.font(.custom("PCL English", size: 13))
+                Text("Minecraft 及相关商标属于各自权利人。本应用未与 Mojang 或 Microsoft 建立关联。")
+                    .font(.custom("PCL English", size: 11)).foregroundStyle(.secondary).lineSpacing(4)
             }
             PCLCard(title: "功能说明", collapsible: true, expanded: false) {
-                Text("已提供原版游戏与 Forge、NeoForge、Fabric、Quilt 安装、本地整合包导入、补全文件、版本选择、Java 检测与离线启动。版本设置支持组件修改、Mod 管理、完整 ZIP 与 Modrinth 整合包导出。社区资源支持 Mod、整合包、数据包、资源包与光影包的搜索、筛选、版本详情和下载安装，可自动补全必需前置 Mod。联机默认自动发现公共入口，支持 Scaffolding 大厅协议，并保留 Mac IPv6／局域网直连与原版 PCL 自定义节点模式。微软正版授权与 PCL 官方节点编号暂未接入。")
+                Text("已提供原版游戏与 Forge、NeoForge、Fabric、Quilt 安装、本地整合包导入、补全文件、版本选择、Java 检测与下载、离线启动。版本设置支持组件修改、Mod 管理、完整 ZIP 与 Modrinth 整合包导出。社区资源支持 Mod、整合包、数据包、资源包与光影包的搜索、筛选、版本详情和下载安装，可自动补全必需前置 Mod。联机默认自动发现公共入口，支持 Scaffolding 大厅协议，并保留 Mac IPv6／局域网直连与原版 PCL 自定义节点模式。微软正版授权与 PCL 官方节点编号暂未接入。")
                     .font(.custom("PCL English", size: 12)).foregroundStyle(.secondary).lineSpacing(5)
             }
         }
@@ -281,10 +317,13 @@ struct LauncherView: View {
             Text("如果 PCL 还算好用的话，也欢迎赞助原作者龙腾猫跃，支持 PCL 持续开发！")
                 .font(.custom("PCL English", size: 13)).lineSpacing(5)
             Link("支持 PCL！", destination: URL(string: "https://meloong.com/afd/a/LTCat")!)
+            if store.launchNeedsJava, let version = store.selectedVersion {
+                PCLHint(text: "此版本需要 Java \(version.requiredJava)（\(version.requiredJavaArchitecture ?? InstallPlatform.architecture)）。继续后会从官方源下载并校验 Java，安装完成后自动启动。", warning: false)
+            }
             HStack {
                 Spacer()
                 Button("取消", role: .cancel) { store.showLaunchConsent = false }.buttonStyle(PCLActionStyle()).keyboardShortcut(.cancelAction)
-                Button("继续离线启动") { store.launchGame() }.buttonStyle(PCLActionStyle(highlight: true)).keyboardShortcut(.defaultAction)
+                Button(store.launchNeedsJava ? "下载 Java 并启动" : "继续离线启动") { store.launchGame() }.buttonStyle(PCLActionStyle(highlight: true)).keyboardShortcut(.defaultAction)
             }.padding(.top, 4)
         }.padding(25).frame(width: 470)
     }

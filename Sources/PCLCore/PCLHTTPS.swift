@@ -15,20 +15,22 @@ public enum PCLHTTPS {
         }
     }
 
-    public static func download(for request: URLRequest, session: URLSession = .shared) async throws -> (URL, URLResponse) {
+    public static func download(for request: URLRequest, session: URLSession = .shared,
+                                progress: (@Sendable (Int64, Int64) -> Void)? = nil) async throws -> (URL, URLResponse) {
         try validateHTTPS(request)
         try await DownloadPolicy.shared.acquire()
         defer { DownloadPolicy.shared.release() }
-        do { return try await downloadAttempt(request, session: session) }
+        do { return try await downloadAttempt(request, session: session, progress: progress) }
         catch let error as URLError where error.code == .secureConnectionFailed {
             try Task.checkCancellation()
             let fallback = tls12Session(copying: session)
             defer { fallback.finishTasksAndInvalidate() }
-            return try await downloadAttempt(request, session: fallback)
+            return try await downloadAttempt(request, session: fallback, progress: progress)
         }
     }
 
-    private static func downloadAttempt(_ request: URLRequest, session: URLSession) async throws -> (URL, URLResponse) {
+    private static func downloadAttempt(_ request: URLRequest, session: URLSession,
+                                        progress: (@Sendable (Int64, Int64) -> Void)?) async throws -> (URL, URLResponse) {
         let monitor = InstallProgressContext.current
         let transport = monitor?.downloadTransport(copying: session) ?? InstallDownloadTelemetryDelegate(copying: session)
         defer { if monitor == nil { transport.finishTasksAndInvalidate() } }
@@ -38,7 +40,7 @@ public enum PCLHTTPS {
         return try await withTaskCancellationHandler {
             try Task.checkCancellation()
             let result: (URL, URLResponse) = try await withCheckedThrowingContinuation { continuation in
-                transport.start(request, cancellation: cancellation, continuation: continuation)
+                transport.start(request, cancellation: cancellation, progress: progress, continuation: continuation)
             }
             do {
                 try await DownloadPolicy.wait(until: cancellation.deadline)
@@ -88,13 +90,14 @@ final class InstallDownloadTelemetryDelegate: NSObject, URLSessionDownloadDelega
     func finishTasksAndInvalidate() { transportSession?.finishTasksAndInvalidate() }
 
     func start(_ request: URLRequest, cancellation: InstallDownloadCancellation,
+               progress: (@Sendable (Int64, Int64) -> Void)?,
                continuation: CheckedContinuation<(URL, URLResponse), Error>) {
         guard let session = transportSession else {
             continuation.resume(throwing: URLError(.unknown)); return
         }
         let task = session.downloadTask(with: request)
         stateLock.lock()
-        tasks[task.taskIdentifier] = DownloadState(continuation: continuation, cancellation: cancellation)
+        tasks[task.taskIdentifier] = DownloadState(continuation: continuation, cancellation: cancellation, progress: progress)
         stateLock.unlock()
         cancellation.attach(task)
         task.resume()
@@ -114,8 +117,10 @@ final class InstallDownloadTelemetryDelegate: NSObject, URLSessionDownloadDelega
         monitor?.recordDownloadedBytes(bytesWritten)
         let deadline = DownloadPolicy.shared.reserve(bytes: bytesWritten)
         stateLock.lock()
-        tasks[downloadTask.taskIdentifier]?.cancellation.setDeadline(deadline)
+        let state = tasks[downloadTask.taskIdentifier]
+        state?.cancellation.setDeadline(deadline)
         stateLock.unlock()
+        state?.progress?(totalBytesWritten, totalBytesExpectedToWrite)
         if deadline > ProcessInfo.processInfo.systemUptime {
             downloadTask.suspend()
             Task {
@@ -172,6 +177,7 @@ final class InstallDownloadTelemetryDelegate: NSObject, URLSessionDownloadDelega
     private struct DownloadState {
         let continuation: CheckedContinuation<(URL, URLResponse), Error>
         let cancellation: InstallDownloadCancellation
+        let progress: (@Sendable (Int64, Int64) -> Void)?
         var file: URL?
         var error: Error?
     }

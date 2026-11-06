@@ -13,9 +13,14 @@ struct PCLComboBox<Selection: Hashable>: View {
     let title: String
     @Binding var selection: Selection
     let options: [PCLComboBoxOption<Selection>]
+    @Environment(\.locale) private var locale
 
     var body: some View {
-        PCLComboBoxRepresentable(title: title, selection: $selection, options: options)
+        PCLComboBoxRepresentable(
+            title: InterfaceLanguage.text(title, locale: locale),
+            selection: $selection,
+            options: options.map { .init(title: InterfaceLanguage.text($0.title, locale: locale), value: $0.value, isEnabled: $0.isEnabled) }
+        )
             .frame(maxWidth: .infinity)
             .frame(height: 28)
     }

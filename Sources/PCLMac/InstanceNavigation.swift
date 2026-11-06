@@ -10,13 +10,14 @@ struct PCLInstanceNavigationRow: View {
     let action: () -> Void
     let accessoryAction: () -> Void
     @State private var hovering = false
+    @Environment(\.locale) private var locale
 
     var body: some View {
         ZStack(alignment: .trailing) {
             Button(action: action) {
                 HStack(spacing: 12) {
                     PCLInstanceIcon(name: icon).frame(width: 18, height: 18)
-                    Text(title).font(.custom("PCL English", size: 14)).lineLimit(1).fixedSize(horizontal: true, vertical: false)
+                    Text(InterfaceLanguage.text(title, locale: locale)).font(.custom("PCL English", size: 14)).lineLimit(1).fixedSize(horizontal: true, vertical: false)
                     Spacer(minLength: 35)
                 }
                 .foregroundStyle(selected ? ClassicTheme.blue : ClassicTheme.text)
@@ -25,7 +26,7 @@ struct PCLInstanceNavigationRow: View {
                 .overlay(alignment: .leading) { if selected { Rectangle().fill(ClassicTheme.blue).frame(width: 3) } }
             }.buttonStyle(.plain)
                 .accessibilityActions {
-                    if let accessoryTitle { Button(accessoryTitle, action: accessoryAction) }
+                    if let accessoryTitle { Button(InterfaceLanguage.text(accessoryTitle, locale: locale), action: accessoryAction) }
                 }
             if let accessory, let accessoryTitle {
                 Button(action: accessoryAction) {
@@ -33,7 +34,7 @@ struct PCLInstanceNavigationRow: View {
                         .foregroundStyle(ClassicTheme.blue).frame(width: 25, height: 25).contentShape(Rectangle())
                 }
                 .buttonStyle(.plain).padding(.trailing, 12)
-                .help(accessoryTitle).accessibilityLabel(accessoryTitle)
+                .help(LocalizedStringKey(accessoryTitle)).accessibilityLabel(LocalizedStringKey(accessoryTitle))
                 .opacity(hovering ? 1 : 0).allowsHitTesting(hovering).accessibilityHidden(!hovering)
             }
         }

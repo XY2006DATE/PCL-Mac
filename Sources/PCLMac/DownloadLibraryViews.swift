@@ -24,14 +24,14 @@ struct PCLVersionLibraryPage: View {
                         .buttonStyle(PCLActionStyle()).help("刷新版本列表").accessibilityLabel("刷新版本列表")
                 }
                 ForEach(groups, id: \.name) { group in
-                    PCLCard(title: group.name == "收藏夹" ? group.name : "\(group.name) (\(group.versions.count))",
+                    PCLCard(title: group.name == "收藏夹" ? group.name : "\(store.text(group.name)) (\(group.versions.count))",
                             collapsible: true, expanded: groups.count == 1 || !["不常用版本", "愚人节版本"].contains(group.name)) {
                         LazyVStack(spacing: 2) { ForEach(group.versions) { PCLInstalledVersionRow(version: $0) } }
                     }.id("\(group.name)-\(groups.count == 1)-\(store.search.isEmpty)")
                 }
                 if groups.isEmpty {
                     PCLCard(title: store.showHiddenVersions ? "无隐藏版本" : "版本列表") {
-                        Text(store.showHiddenVersions ? "没有版本被隐藏，你可以在版本设置的版本分类选项中隐藏版本。\n再次关闭隐藏版本查看模式即可返回。" : "没有找到匹配的版本。")
+                        Text(store.text(store.showHiddenVersions ? "没有版本被隐藏，你可以在版本设置的版本分类选项中隐藏版本。\n再次关闭隐藏版本查看模式即可返回。" : "没有找到匹配的版本。"))
                             .font(.custom("PCL English", size: 13)).foregroundStyle(.secondary).lineSpacing(5).padding(.vertical, 15)
                     }
                 }
@@ -166,7 +166,12 @@ struct PCLDownloadsPage: View {
     var body: some View {
         Group {
             if store.communityState.kind != nil { PCLCommunityResourcesPage() }
-            else if let version = store.currentRemoteSelection { selection(version) }
+            else if !store.minecraftDownloadsAvailable {
+                PCLCard(title: "Minecraft 下载暂不可用") {
+                    PCLHint(text: store.minecraftDownloadRegionMessage, warning: true)
+                    Button("切换下载地区") { store.openDownloadRegionSettings() }.buttonStyle(PCLActionStyle(highlight: true))
+                }
+            } else if let version = store.currentRemoteSelection { selection(version) }
             else { catalogue }
         }
     }
@@ -288,12 +293,14 @@ private struct PCLRemoteVersionRow: View {
     @State private var hovering = false
     var body: some View {
         let category = PCLDownloadCategory.category(for: version)
+        let categoryLabel = store.text(category.rawValue)
+        let releaseLabel = latest ? String(format: store.text("最新%@"), categoryLabel) : categoryLabel
         return Button { store.selectRemoteVersion(version) } label: {
             HStack(spacing: 10) {
                 PCLResourceImage(name: category.icon, fallback: "GameVersion").frame(width: 32, height: 32)
                 VStack(alignment: .leading, spacing: 4) {
                     Text(version.id).font(.custom("PCL English", size: 14)).foregroundStyle(hovering ? Color.pclBlue : ClassicTheme.text)
-                    Text("\(latest ? "最新" : "")\(category.rawValue)，发布于 \(releaseDate)")
+                    Text("\(releaseLabel)，发布于 \(releaseDate)")
                         .font(.custom("PCL English", size: 11)).foregroundStyle(.secondary)
                 }
                 Spacer(minLength: 6)
@@ -313,8 +320,8 @@ private struct PCLRemoteVersionRow: View {
             }
     }
     private var releaseDate: String {
-        guard let text = version.releaseTime, let date = ISO8601DateFormatter().date(from: text) else { return "未知" }
-        let formatter = DateFormatter(); formatter.locale = Locale(identifier: "zh_CN"); formatter.dateFormat = "yyyy/MM/dd HH:mm"
+        guard let text = version.releaseTime, let date = ISO8601DateFormatter().date(from: text) else { return store.text("未知") }
+        let formatter = DateFormatter(); formatter.locale = store.interfaceLocale; formatter.dateStyle = .medium; formatter.timeStyle = .short
         return formatter.string(from: date)
     }
 }
@@ -325,7 +332,7 @@ struct PCLSearchField: View {
     var body: some View {
         HStack(spacing: 8) {
             PCLIcon("Search").frame(width: 14, height: 14).foregroundStyle(Color.pclBlue.opacity(0.7))
-            TextField(prompt, text: $text).textFieldStyle(.plain)
+            TextField(LocalizedStringKey(prompt), text: $text).textFieldStyle(.plain)
             if !text.isEmpty { Button { text = "" } label: { PCLIcon("Clear").frame(width: 12, height: 12) }.buttonStyle(.plain).foregroundStyle(.secondary).help("清空搜索").accessibilityLabel("清空搜索") }
         }.font(.custom("PCL English", size: 13)).padding(.horizontal, 10).frame(height: 35)
             .background(.white.opacity(0.95), in: RoundedRectangle(cornerRadius: 3))
@@ -336,10 +343,11 @@ struct PCLSearchField: View {
 struct PCLHint: View {
     let text: String
     var warning = false
+    @Environment(\.locale) private var locale
     var body: some View {
         HStack(alignment: .top, spacing: 8) {
             // MyHint.xaml presents the hint text without a leading symbol.
-            Text(text).lineSpacing(3)
+            Text(InterfaceLanguage.text(text, locale: locale)).lineSpacing(3)
         }.font(.custom("PCL English", size: 12)).foregroundStyle(warning ? Color(red: 0.74, green: 0.25, blue: 0.23) : Color.pclBlue)
             .padding(10).frame(maxWidth: .infinity, alignment: .leading)
             .background(warning ? Color(red: 1, green: 0.93, blue: 0.92) : Color.pclBlue.opacity(0.06), in: RoundedRectangle(cornerRadius: 3))

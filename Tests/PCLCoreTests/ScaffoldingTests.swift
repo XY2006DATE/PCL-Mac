@@ -17,6 +17,11 @@ final class ScaffoldingTests: XCTestCase {
         XCTAssertThrowsError(try ScaffoldingInvite("U/1000-0000-0000-0000"))
         XCTAssertThrowsError(try ScaffoldingInvite("U/00000-000-0000-0000"))
     }
+    func testLANPortIsReadFromTheGameMessageAndNotFromChat() {
+        XCTAssertEqual(MinecraftLauncher.openedLANPort(in: "[18:24:00] [Render thread/INFO]: Started serving on 53192"), 53192)
+        XCTAssertNil(MinecraftLauncher.openedLANPort(in: "[18:24:00] [Render thread/INFO]: [CHAT] /INFO]: Started serving on 53192"))
+        XCTAssertNil(MinecraftLauncher.openedLANPort(in: "[18:24:00] [Render thread/INFO]: Started serving on 0"))
+    }
     func testFramingMatchesCERawBytesHandlesFragmentsAndBoundsBodies() throws {
         let packet = ScaffoldingFrame.request("c:server_port")
         XCTAssertEqual(packet.map { String(format: "%02x", $0) }.joined(), "0d633a7365727665725f706f727400000000")

@@ -114,6 +114,13 @@ public enum MinecraftVersionMetadata {
         return 8
     }
 
+    static func hasArchitectureSpecificNatives(_ libraries: [[String: Any]]) -> Bool {
+        libraries.contains {
+            let name = $0["name"] as? String ?? ""
+            return name.contains(":natives-macos-arm64") || name.contains(":natives-osx-arm64")
+        }
+    }
+
     public static func validateVersionID(_ id: String) throws {
         guard !id.isEmpty, id != ".", id != "..", !id.contains("/"), !id.contains("\\"), !id.contains(":"), !id.contains("\0") else {
             throw LauncherError.invalidVersion("版本名称含有非法路径字符")
